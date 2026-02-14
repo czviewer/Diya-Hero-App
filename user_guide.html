@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diya Hero User Guide</title>
+    <style>
+        /* 
+           Print-optimized CSS 
+           Target: A4 Paper, Portrait
+        */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+        /* Expert PDF Control */
+        @page {
+            size: A4 portrait;
+            margin: 0;
+        }
+
+        /* Instruction Bar */
+        .print-instruction {
+            background: #333;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 9999;
+        }
+
+        @media print {
+            .print-instruction {
+                display: none;
+            }
+        }
+
+        :root {
+            /* Professional Palette */
+            --primary: #1a1574;
+            /* Deep Royal Blue */
+            --primary-light: #e0e7ff;
+            --accent: #b91c1c;
+            /* Hero Red */
+            --accent-light: #fef2f2;
+            --text-main: #111827;
+            /* Near Black for sharpness */
+            --text-muted: #6b7280;
+            --border: #e5e7eb;
+            --card-bg: #ffffff;
+            --page-bg: #ffffff;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            color: var(--text-main);
+            line-height: 1.5;
+            margin: 0;
+            padding: 0;
+            background: #f3f4f6;
+            /* Light grey screen background */
+        }
+
+        /* Modern Page Container */
+        .page {
+            background: var(--page-bg);
+            width: 210mm;
+            height: 296mm;
+            padding: 15mm 20mm 20mm 20mm;
+            margin: 20px auto;
+            position: relative;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Content wrapper to prevent footer overlap */
+        .page-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Typography Upgrade */
+        h1,
+        h2,
+        h3,
+        h4 {
+            font-family: 'Inter', sans-serif;
+            color: var(--primary);
+            line-height: 1.2;
+            margin-top: 0;
+        }
+
+        h1 {
+            font-size: 26pt;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            text-transform: none;
+            margin-bottom: 2mm;
+        }
+
+        h2 {
+            font-size: 16pt;
+            font-weight: 700;
+            border-bottom: 3px solid var(--primary-light);
+            padding-bottom: 2mm;
+            margin-top: 5mm;
+            margin-bottom: 5mm;
+            display: flex;
+            align-items: center;
+        }
+
+        h2::before {
+            content: '';
+            display: inline-block;
+            width: 6px;
+            height: 24px;
+            background: var(--accent);
+            margin-right: 10px;
+            border-radius: 2px;
+        }
+
+        h3 {
+            font-size: 13pt;
+            font-weight: 600;
+            color: #374151;
+            margin-top: 4mm;
+            margin-bottom: 2mm;
+        }
+
+        p {
+            font-size: 10pt;
+            color: #4b5563;
+            margin-bottom: 3mm;
+            text-align: left;
+        }
+
+        /* Modern List */
+        ul {
+            margin-bottom: 3mm;
+            padding-left: 0;
+            list-style: none;
+        }
+
+        li {
+            font-size: 10pt;
+            margin-bottom: 2mm;
+            color: #4b5563;
+            position: relative;
+            padding-left: 6mm;
+        }
+
+        li::before {
+            content: "•";
+            color: var(--accent);
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+
+        strong {
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        /* UI Components - Cards */
+        .step-box {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--primary);
+            padding: 12px 16px;
+            margin-bottom: 4mm;
+            border-radius: 6px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        .step-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--primary);
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            font-size: 10px;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+
+        /* Modern Toast Alerts */
+        .alert-box {
+            padding: 10px 14px;
+            border-radius: 6px;
+            margin-bottom: 4mm;
+            font-size: 9.5pt;
+            display: flex;
+            align-items: center;
+            border-left: 4px solid transparent;
+        }
+
+        .alert-info {
+            background: #eff6ff;
+            border-left-color: #3b82f6;
+            color: #1e40af;
+        }
+
+        .alert-warning {
+            background: #fffbeb;
+            border-left-color: #f59e0b;
+            color: #92400e;
+        }
+
+        .alert-error {
+            background: #fef2f2;
+            border-left-color: #ef4444;
+            color: #b91c1c;
+        }
+
+        .alert-icon {
+            font-size: 14pt;
+            margin-right: 12px;
+            line-height: 1;
+        }
+
+        /* Status Badges - Professional Look */
+        .badge {
+            display: inline-flex;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 8pt;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+        }
+
+        .bg-green {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        .bg-yellow {
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fde68a;
+        }
+
+        .bg-blue {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+        }
+
+        /* Footer Renovation */
+        .footer {
+            position: absolute;
+            bottom: 15mm;
+            left: 20mm;
+            right: 20mm;
+            border-top: 1px solid var(--border);
+            padding-top: 3mm;
+            font-size: 8pt;
+            font-weight: 500;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Header Accent */
+        .page-header-accent {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--primary) 70%, var(--accent) 70%, var(--accent) 100%);
+        }
+
+        /* Grid System */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6mm;
+            margin-bottom: 4mm;
+        }
+
+        /* High Quality Alerts */
+        .hq-alert {
+            display: flex;
+            border-radius: 12px;
+            background: #ffffff;
+            border: 1px solid;
+            margin-bottom: 5mm;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
+        }
+
+        .hq-alert-icon-box {
+            width: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20pt;
+            flex-shrink: 0;
+            border-right: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .hq-alert-content {
+            flex: 1;
+            padding: 14px 18px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .hq-alert-title {
+            font-weight: 800;
+            font-size: 10pt;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .hq-alert-message {
+            font-size: 11pt;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+
+        /* Warning Variant */
+        .hq-warning {
+            border-color: #fde68a;
+            /* Amber-200 */
+        }
+
+        .hq-warning .hq-alert-icon-box {
+            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+            color: #d97706;
+            /* Amber-600 */
+        }
+
+        .hq-warning .hq-alert-content {
+            background: #ffffff;
+            /* Keep content white for contrast or very light yellow? White is cleaner */
+        }
+
+        .hq-warning .hq-alert-title {
+            color: #b45309;
+            /* Amber-700 */
+        }
+
+        .hq-warning .hq-alert-message {
+            color: #92400e;
+            /* Amber-800 */
+        }
+
+        /* Error Variant */
+        .hq-error {
+            border-color: #fecaca;
+            /* Red-200 */
+        }
+
+        .hq-error .hq-alert-icon-box {
+            background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+            color: #dc2626;
+            /* Red-600 */
+        }
+
+        .hq-error .hq-alert-title {
+            color: #b91c1c;
+            /* Red-700 */
+        }
+
+        .hq-error .hq-alert-message {
+            color: #7f1d1d;
+            /* Red-900 */
+        }
+
+        /* Print Specifics */
+        @media print {
+            body {
+                background: white;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .page {
+                width: 210mm;
+                height: 296mm;
+                /* Strict A4 */
+                margin: 0;
+                border: none;
+                box-shadow: none;
+                padding: 15mm 20mm 20mm 20mm;
+                overflow: hidden;
+                page-break-after: always;
+                page-break-inside: avoid;
+            }
+
+            .page:last-child {
+                page-break-after: auto;
+            }
+        }
+
+        /* Specific Page Tweaks */
+        .cover-page {
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+    </style>
+</head>
+
+<body>
+
+
+
+    <!-- Page 1: Cover & Intro -->
+    <div class="page">
+        <div class="page-header-accent"></div>
+        <div class="page-content">
+            <div class="cover-page">
+                <div
+                    style="margin-bottom: 8mm; background: radial-gradient(circle, var(--primary-light) 0%, #ffffff 100%); padding: 30px; border-radius: 50%; width: 300px; height: 300px; display: flex; align-items: center; justify-content: center; margin-left: auto; margin-right: auto;">
+                    <img src="assets/icon.png" alt="App Icon" style="width: 200%; height: 200%; object-fit: contain;">
+                </div>
+
+                <h1 style="font-size: 32pt; margin-bottom: 2mm; color: var(--primary);">DIYA HERO APP</h1>
+                <p
+                    style="font-size: 14pt; color: var(--text-muted); font-weight: 300; letter-spacing: 0.1em; text-transform: uppercase;">
+                    Employee User Guide</p>
+
+                <div style="width: 60px; height: 4px; background: var(--accent); margin: 8mm auto;"></div>
+
+                <p style="font-size: 11pt; font-style: italic; color: var(--text-muted);">Simple. Verified. Secure.</p>
+
+                <div
+                    style="margin-top: 15mm; width: 100%; text-align: left; background: #fff; border: 1px solid var(--border); padding: 8mm; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+                    <h3
+                        style="margin-top: 0; color: var(--primary); border-bottom: 1px solid var(--border); padding-bottom: 2mm; margin-bottom: 4mm;">
+                        🚀 Quick Start Checklist</h3>
+                    <ul style="padding: 0;">
+                        <li>Enable <strong>GPS / Location Services</strong> on your phone.</li>
+                        <li>Ensure you have an active <strong>Internet Connection</strong>.</li>
+                        <li>Be physically present at your <strong>Office Branch</strong>.</li>
+                        <li>Open the app daily at <strong>09:00 AM</strong>.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="footer">
+            <span>Diya Hero App</span>
+            <span>Version 1.0</span>
+        </div>
+    </div>
+
+    <!-- Page 2: Getting Started (Login & Dashboard) -->
+    <div class="page">
+        <div class="page-header-accent"></div>
+        <div class="page-content">
+            <h2>1. Getting Started</h2>
+
+            <h3>Logging In</h3>
+            <p>Open the app and enter your registered <strong>Email</strong> and <strong>Password</strong>.</p>
+            <div class="step-box">
+                <p><span class="step-number">1</span> Enter your credentials.</p>
+                <p><span class="step-number">2</span> Tap <strong>Login</strong>.</p>
+            </div>
+            <!-- Page 2: Note about new employees -->
+            <div class="hq-alert hq-warning" style="margin-top: 2mm;">
+                <div class="hq-alert-icon-box">ℹ️</div>
+                <div class="hq-alert-content">
+                    <div class="hq-alert-title">Registration Required</div>
+                    <div class="hq-alert-message">New employees must sign up first. Admin verification is required.
+                    </div>
+                </div>
+            </div>
+
+            <h3>The Dashboard Overview</h3>
+            <p>Your main command center for daily activities.</p>
+
+            <div class="grid-2">
+                <div class="step-box" style="margin: 0; border-left: 4px solid var(--accent);">
+                    <h4 style="margin: 0 0 2mm 0; font-size: 11pt;">Daily Status</h4>
+                    <ul style="padding: 0; margin: 0;">
+                        <li><span class="badge bg-green">COMPLETED</span> Day finished</li>
+                        <li><span class="badge bg-blue">ON DUTY</span> Checked in</li>
+                        <li><span class="badge bg-yellow">HALF DAY</span> Partial</li>
+                    </ul>
+                </div>
+                <div class="step-box" style="margin: 0; border-left: 4px solid var(--text-muted);">
+                    <h4 style="margin: 0 0 2mm 0; font-size: 11pt;">System Checks</h4>
+                    <p style="margin: 0; font-size: 9pt;"><strong>📍 Location:</strong> Verified</p>
+                    <p style="margin: 0; font-size: 9pt;"><strong>🕒 Time:</strong> Synced</p>
+                </div>
+            </div>
+
+            <!-- Page 2: Important Location Warning -->
+            <div class="hq-alert hq-error" style="margin-top: 4mm;">
+                <div class="hq-alert-icon-box">⚠️</div>
+                <div class="hq-alert-content">
+                    <div class="hq-alert-title">Important Requirement</div>
+                    <div class="hq-alert-message">You cannot Mark Attendance if your location is "Unverified". You must
+                        be inside Office/Building.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <span>Diya Hero App</span>
+            <span>Page 2</span>
+        </div>
+    </div>
+
+    <!-- Page 3: Morning Routine -->
+    <div class="page">
+        <div class="page-header-accent"></div>
+        <div class="page-content">
+            <h2>2. Morning Routine</h2>
+            <p>Start your day by marking your attendance on time.</p>
+
+            <div class="step-box" style="border-left-color: var(--success); background: #f0fdf4;">
+                <h3 style="margin-top:0; color: #166534;">☀️ Check-In Window</h3>
+                <p style="font-size: 14pt; font-weight: bold; color: #166534; margin: 0;">08:00 AM - 11:59 AM</p>
+            </div>
+
+            <h3 style="margin-top: 4mm;">Step-by-Step</h3>
+            <div class="step-box">
+                <p><span class="step-number">1</span> Ensure "Location" says <strong>Verified</strong>.</p>
+                <p><span class="step-number">2</span> Locate the "Morning Check-In" card.</p>
+                <p><span class="step-number">3</span> Tap the big <strong>CHECK IN</strong> button.</p>
+                <p><span class="step-number">4</span> Confirm the popup action.</p>
+            </div>
+
+            <p style="margin-bottom: 2mm;"><strong>Success Indicators:</strong></p>
+            <ul style="margin-top: 0;">
+                <li>Green Tick Mark ✓ appears</li>
+                <li>Punch time is recorded (e.g., "09:05 AM")</li>
+                <li>Status updates to <span class="badge bg-blue">ON DUTY</span></li>
+            </ul>
+
+            <div style="margin: 2mm 0; text-align: center;">
+                <img src="assets/morning-checkin.png" alt="Card Preview"
+                    style="width: 100%; max-width: 260px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); border: 1px solid var(--border);">
+            </div>
+
+            <!-- Page 3: Missed Window Error -->
+            <div class="hq-alert hq-error">
+                <div class="hq-alert-icon-box">🚫</div>
+                <div class="hq-alert-content">
+                    <div class="hq-alert-title">Missed the Window?</div>
+                    <div class="hq-alert-message">If you do not check in by 11:59 AM, the Morning slot will lock. You
+                        will be marked Absent for the morning.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <span>Diya Hero App</span>
+            <span>Page 3</span>
+        </div>
+    </div>
+
+    <!-- Page 4: Afternoon & Evening -->
+    <div class="page">
+        <div class="page-header-accent"></div>
+        <div class="page-content">
+            <h2>3. Afternoon & End of Day</h2>
+
+            <div class="step-box"
+                style="border-left-color: var(--warning); background-color: #fffbf0; margin-bottom: 4mm;">
+                <h3 style="margin: 0 0 1mm 0; color: #92400e;">🌤️ Afternoon (Optional)</h3>
+                <p style="margin: 0; font-size: 9pt;"><strong>12:00 PM - 02:59 PM</strong> • Only for abrupt status
+                    changes.</p>
+            </div>
+
+            <div class="grid-2">
+                <div class="step-box" style="margin: 0;">
+                    <strong>↓ ENTERS</strong>
+                    <p style="font-size: 9pt; margin-top: 2mm;">Use if you missed Morning Check-in and are arriving late
+                        (After 12 PM).</p>
+                </div>
+                <div class="step-box" style="margin: 0;">
+                    <strong>↑ LEAVES</strong>
+                    <p style="font-size: 9pt; margin-top: 2mm;">Use if you are leaving early for the day (Half Day).</p>
+                </div>
+            </div>
+            <p style="font-size: 9pt; color: var(--text-muted); text-align: center; margin-bottom: 6mm;"><em>Leave as
+                    "NONE" for a normal working day.</em></p>
+
+            <div class="step-box" style="border-left-color: var(--primary); background-color: #eef2ff;">
+                <h3 style="margin: 0 0 1mm 0; color: var(--primary);">🌙 Evening Check-Out</h3>
+                <p style="margin: 0; font-size: 9pt;"><strong>03:00 PM - 11:30 PM</strong> • Mandatory for Full Day.</p>
+            </div>
+
+            <h3 style="margin-top: 4mm;">Check-Out Process</h3>
+            <div class="step-box">
+                <p><span class="step-number">1</span> Verify you are at the office.</p>
+                <p><span class="step-number">2</span> Tap <strong>CHECK OUT</strong> on the Evening card.</p>
+                <p><span class="step-number">3</span> App confirms with "COMPLETED" status.</p>
+            </div>
+
+            <!-- Page 4: Why Check Out Info -->
+            <div class="hq-alert hq-warning">
+                <div class="hq-alert-icon-box">💡</div>
+                <div class="hq-alert-content">
+                    <div class="hq-alert-title">Why Check Out?</div>
+                    <div class="hq-alert-message">You must check out to mark the day as "Full Day". If you forget, it
+                        may be counted as a missed punch.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <span>Diya Hero App</span>
+            <span>Page 4</span>
+        </div>
+    </div>
+
+    <!-- Page 5: Troubleshooting -->
+    <div class="page">
+        <div class="page-header-accent"></div>
+        <div class="page-content">
+            <h2>4. Troubleshooting</h2>
+
+            <h3>Location Issues</h3>
+            <div class="hq-alert hq-warning">
+                <div class="hq-alert-icon-box">📍</div>
+                <div class="hq-alert-content">
+                    <div class="hq-alert-title">GPS / Location Error</div>
+                    <div class="hq-alert-message">"Outside Range" or "Unverified"</div>
+                </div>
+            </div>
+            <ul>
+                <li><strong>Solution 1:</strong> Ensure your GPS is ON.</li>
+                <li><strong>Solution 2:</strong> Open Google Maps to calibrate your location, then return.</li>
+                <li><strong>Solution 3:</strong> Ensure you are physically within the office premises.</li>
+            </ul>
+
+            <h3 style="margin-top: 5mm;">Security Warnings</h3>
+            <div class="hq-alert hq-error">
+                <div class="hq-alert-icon-box">🛡️</div>
+                <div class="hq-alert-content">
+                    <div class="hq-alert-title">Critical Security Alert</div>
+                    <div class="hq-alert-message">"Security Issue Detected"</div>
+                </div>
+            </div>
+            <p>The app has strict security. This error appears if:</p>
+            <ul>
+                <li>You are using a "Fake GPS" or "Mock Location" app. <strong>Uninstall immediately.</strong></li>
+                <li>Your device is rooted or compromised.</li>
+            </ul>
+            <p style="font-size: 9pt; color: var(--accent);"><em>The app will not work until unauthorized tools are
+                    removed.</em></p>
+
+            <h3 style="margin-top: 5mm;">Internet & Sync</h3>
+            <div class="step-box">
+                <p><strong>Error: "Sync Error" or "Network Error"</strong></p>
+                <ul style="margin-bottom: 0;">
+                    <li>Check Mobile Data / Wi-Fi.</li>
+                    <li>Pull down on the screen to <strong>Refresh</strong>.</li>
+                </ul>
+            </div>
+
+            <div style="margin-top: 8mm; border-top: 1px solid var(--border); padding-top: 4mm;">
+                <h3 style="margin-top: 0;">Need Help?</h3>
+                <p>Tap the <strong>Blue Chat Button</strong> <span style="color:#3b82f6; font-size:14pt;">●</span> to
+                    access the <strong>Issue Reporting System</strong>.</p>
+                <p style="font-size: 9pt; color: var(--text-muted);">Use this to report app crashes, location errors, or
+                    attendance corrections.</p>
+            </div>
+        </div>
+
+        <div class="footer">
+            <span>Diya Hero App</span>
+            <span>Page 5</span>
+        </div>
+    </div>
+
+</body>
+
+</html>

@@ -1,0 +1,49 @@
+{
+  "project_info": {
+    "project_number": "455829653263",
+    "firebase_url": "https://diya-hero-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "diya-hero",
+    "storage_bucket": "diya-hero.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:455829653263:android:86553792a006f292e0607a",
+        "android_client_info": {
+          "package_name": "com.diyagroup.attendance"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCU_x6mrY6x04_pemQpJ1AM-UlOaGLTRP4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:455829653263:android:ec7d42b236e88063e0607a",
+        "android_client_info": {
+          "package_name": "com.hero.diyamobikes"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCU_x6mrY6x04_pemQpJ1AM-UlOaGLTRP4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

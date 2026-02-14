@@ -1,0 +1,81 @@
+{
+  "expo": {
+    "name": "Diya-Hero App",
+    "slug": "attendance-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "This app needs access to your location to verify you are at the correct branch for attendance marking.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs access to your location to verify you are at the correct branch for attendance marking."
+      },
+      "entitlements": {
+        "com.apple.developer.networking.wifi-info": true
+      },
+      "bundleIdentifier": "com.diyagroup.attendance"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "versionCode": 1,
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.REQUEST_INSTALL_PACKAGES"
+      ],
+      "package": "com.diyagroup.attendance",
+      "googleServicesFile": "./google-services.json"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "This app needs access to your location to verify you are at the correct branch for attendance marking."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#6366f1"
+        }
+      ]
+    ],
+    "notification": {
+      "icon": "./assets/notification-icon.png",
+      "color": "#6366f1",
+      "androidMode": "default"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/8636fb20-0d1c-416a-bac7-ab12a14b80b1",
+      "fallbackToCacheTimeout": 0
+    },
+    "extra": {
+      "eas": {
+        "projectId": "8636fb20-0d1c-416a-bac7-ab12a14b80b1"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "owner": "karthikrr"
+  }
+}
