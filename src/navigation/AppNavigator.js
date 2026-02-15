@@ -22,12 +22,39 @@ export default function AppNavigator() {
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (u) => {
             if (u) {
-                setUser(u);
+                // 1. Block UI until Device Binding is Verified
+                try {
+                    const binding = await checkDeviceBinding(u.uid);
+                    if (!binding.allowed) {
+                        console.log('[Navigator] Binding check failed, forcing logout.');
 
-                // Real-time suspension check
-                // We assign the listener to a variable so we can unsubscribe when user logs out or component unmounts
-                // Note: handling unsubscribe inside this callback is tricky because this callback runs multiple times.
-                // A better approach might be a separate useEffect for 'user' state changes.
+                        // Log the unauthorized attempt - ALREADY LOGGED BY mobile_bindDevice
+                        // const { logUnauthorizedAttempt } = require('../services/auth');
+                        // await logUnauthorizedAttempt(u.uid, u.email, binding.allowed ? 'Unknown' : binding.error);
+
+                        await logoutUser();
+                        setUser(null);
+                        setLoading(false);
+                        return; // Stop here
+                    }
+
+                    // 2. Safe to proceed - Update Session Data & Push Reg
+                    // We do this HERE to ensure we never register a device that isn't bound
+                    try {
+                        const { registerForPushNotifications } = require('../services/notifications');
+                        const { updateUserSessionData } = require('../services/auth');
+
+                        await registerForPushNotifications();
+                        await updateUserSessionData(u.uid);
+                    } catch (err) {
+                        console.log('[Navigator] Non-critical session update failed:', err);
+                    }
+
+                    setUser(u);
+                } catch (e) {
+                    console.error('[Navigator] Error during auth checks:', e);
+                    setUser(null);
+                }
             } else {
                 setUser(null);
             }

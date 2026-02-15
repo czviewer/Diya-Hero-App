@@ -2,13 +2,20 @@ import {
     signInWithEmailAndPassword,
     signOut as firebaseSignOut
 } from 'firebase/auth';
-import { ref, get, set, push, update, onValue } from 'firebase/database';
+import { ref, get, onValue } from 'firebase/database';
 import { auth, db } from './firebaseConfig';
 import * as Application from 'expo-application';
 import * as Notifications from 'expo-notifications';
 import * as Location from 'expo-location';
 import { Platform } from 'react-native';
-import { logActivityAsync, logActivity, ActivityType } from './activityLog';
+import * as Device from 'expo-device';
+import { logActivity, ActivityType } from './activityLog';
+import {
+    mobile_bindDevice,
+    mobile_logSecurityEvent,
+    mobile_updateSessionData,
+    mobile_requestSignup
+} from './cloudFunctions';
 
 /**
  * Generates or retrieves a unique device ID.
@@ -22,31 +29,79 @@ export async function getDeviceId() {
     return 'unknown-device';
 }
 
+export function getDeviceInfo() {
+    return {
+        brand: Device.brand,
+        modelName: Device.modelName,
+        osName: Device.osName,
+        osVersion: Device.osVersion,
+        platform: Platform.OS,
+        appVersion: Application.nativeApplicationVersion || '1.0.0'
+    };
+}
+
 /**
  * Checks if the current device is bound to the user's account.
+ * REPLACED: Uses secure Cloud Function 'mobile_bindDevice'
  */
-export async function checkDeviceBinding(userUid) {
-    const currentDeviceId = await getDeviceId();
-    const deviceRef = ref(db, `users/${userUid}/boundDevice`);
-    const snapshot = await get(deviceRef);
-
-    if (snapshot.exists()) {
-        const savedDeviceId = snapshot.val();
-        if (savedDeviceId !== currentDeviceId) {
-            return { allowed: false, error: "This account is already registered to another device." };
-        }
-        return { allowed: true };
-    } else {
-        // Bind device for first time login
-        await set(deviceRef, currentDeviceId);
-
-        // Log device binding (async, crash-proof)
-        logActivityAsync(ActivityType.DEVICE_BIND, {
+export async function checkDeviceBinding(userUid, silent = false) {
+    try {
+        const currentDeviceId = await getDeviceId();
+        // Server handles the check and set logic atomically
+        const result = await mobile_bindDevice({
             deviceId: currentDeviceId,
-            platform: Platform.OS
+            platform: Platform.OS,
+            deviceInfo: getDeviceInfo(),
+            silent: silent
         });
 
-        return { allowed: true };
+        return result; // { allowed: boolean, error?: string }
+    } catch (error) {
+        // console.error('[Auth] Device binding check failed:', error); // Prevent double logging
+        return { allowed: false, error: "Unable to verify device binding. Please try again." };
+    }
+}
+
+/**
+ * Logs an unauthorized access attempt to Firebase
+ * REPLACED: Uses secure Cloud Function 'mobile_logSecurityEvent'
+ */
+export async function logUnauthorizedAttempt(userId, email, reason) {
+    try {
+        const deviceId = await getDeviceId();
+
+        // Silently fetch location for the log - PRIORITIZE SPEED
+        let location = null;
+        try {
+            const { status } = await Location.getForegroundPermissionsAsync();
+            if (status === 'granted') {
+                location = await Location.getLastKnownPositionAsync();
+                if (!location) {
+                    location = await Location.getCurrentPositionAsync({
+                        accuracy: Location.Accuracy.Balanced,
+                        timeout: 1500,
+                    });
+                }
+            }
+        } catch (locErr) {
+            // Silent - location is optional
+        }
+
+        // Send to Server
+        await mobile_logSecurityEvent({
+            userId, // Note: Function might ignore this if unauth, but good to send
+            email: email || 'unknown',
+            reason,
+            deviceId,
+            location: location ? {
+                latitude: location.coords.latitude,
+                longitude: location.coords.longitude,
+                accuracy: location.coords.accuracy
+            } : null
+        });
+
+    } catch (logError) {
+        console.error('[Auth] Failed to log unauthorized attempt:', logError);
     }
 }
 
@@ -55,7 +110,7 @@ export async function loginUser(email, password) {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
-        // 1. Check if account is active
+        // 1. Check if account is active (Read-only, safe to keep client-side for speed)
         const userRef = ref(db, `users/${user.uid}`);
         const snapshot = await get(userRef);
 
@@ -67,62 +122,22 @@ export async function loginUser(email, password) {
             }
         }
 
-        const bindingResult = await checkDeviceBinding(user.uid);
+        // 2. Check Device Binding (Server-Side)
+        const bindingResult = await checkDeviceBinding(user.uid, true);
 
         if (!bindingResult.allowed) {
             console.log('[Auth] Device binding failed:', bindingResult.error);
-
-            // Log unauthorized device attempt BEFORE logout
-            try {
-                const deviceId = await getDeviceId();
-
-                // Silently fetch location for the log
-                let location = null;
-                try {
-                    const { status } = await Location.getForegroundPermissionsAsync();
-                    if (status === 'granted') {
-                        const loc = await Location.getCurrentPositionAsync({
-                            accuracy: Location.Accuracy.Balanced,
-                            timeout: 5000,
-                        });
-                        location = {
-                            latitude: loc.coords.latitude,
-                            longitude: loc.coords.longitude,
-                            accuracy: loc.coords.accuracy,
-                        };
-                    }
-                } catch (locErr) {
-                    // Silent - location is optional
-                }
-
-                const attemptRef = ref(db, 'unauthorizedAttempts');
-                const newAttemptRef = push(attemptRef);
-                await set(newAttemptRef, {
-                    userId: userCredential.user.uid,
-                    email,
-                    deviceId,
-                    platform: Platform.OS,
-                    timestamp: new Date().toISOString(),
-                    reason: bindingResult.error,
-                    location, // { latitude, longitude, accuracy } or null
-                });
-                console.log('[Auth] Unauthorized attempt logged successfully');
-            } catch (logError) {
-                console.error('[Auth] Failed to log unauthorized attempt:', logError);
-            }
-
-            await firebaseSignOut(auth); // Log out immediately if binding fails
-            console.log('[Auth] User signed out, throwing error');
+            await firebaseSignOut(auth);
             throw new Error(bindingResult.error);
         }
 
-        // Log successful login (async, crash-proof)
-        logActivityAsync(ActivityType.LOGIN, {
+        // 3. Log successful login (Server-Side via wrapper)
+        logActivity(ActivityType.LOGIN, {
             email,
             timestamp: new Date().toISOString()
         });
 
-        // Update session data (App Version, Permissions, etc.)
+        // 4. Update session data (Server-Side)
         await updateUserSessionData(user.uid);
 
         return userCredential.user;
@@ -134,7 +149,7 @@ export async function loginUser(email, password) {
 
 /**
  * Updates user session data including App Version and Permissions
- * Only writes to DB if data has changed to minimize writes
+ * REPLACED: Uses secure Cloud Function 'mobile_updateSessionData'
  */
 export async function updateUserSessionData(userId) {
     try {
@@ -154,74 +169,46 @@ export async function updateUserSessionData(userId) {
             locStatus = status;
         } catch (e) { console.log('Error fetching location status:', e); }
 
-        // Fetch existing data to compare
-        const userRef = ref(db, `users/${userId}`);
-        const snapshot = await get(userRef);
-        const userData = snapshot.val() || {};
-
-        const existingAppVersion = userData.appVersion || {};
-        const existingPermissions = userData.deviceInfo?.permissions || {};
-
-        const updates = {};
-        const timestamp = new Date().toISOString();
-        let hasChanges = false;
-
-        // 1. Check App Version
-        if (existingAppVersion.versionName !== version || existingAppVersion.versionCode !== build) {
-            updates[`users/${userId}/appVersion`] = {
+        // Send to Server - Server handles "only update if changed" logic to save cost/writes
+        await mobile_updateSessionData({
+            appVersion: {
                 versionName: version,
-                versionCode: build,
-                lastUpdated: timestamp
-            };
-            hasChanges = true;
-        }
-
-        // 2. Check Permissions
-        if (existingPermissions.notifications !== notifStatus || existingPermissions.location !== locStatus) {
-            updates[`users/${userId}/deviceInfo/permissions`] = {
+                versionCode: build
+            },
+            permissions: {
                 notifications: notifStatus,
-                location: locStatus,
-                lastChecked: timestamp
-            };
-            hasChanges = true;
-        }
+                location: locStatus
+            }
+        });
 
-        // Only write if changes detected
-        if (hasChanges) {
-            await update(ref(db), updates);
-            console.log('Session data updated in DB');
-        } else {
-            console.log('Session data unchanged, skipping DB write');
-        }
     } catch (error) {
         console.error('[Auth] Failed to update session data:', error);
-        // non-blocking error
     }
 }
 
 export async function logoutUser() {
-    // Log logout BEFORE signing out (must await to ensure it completes while authenticated)
     try {
+        // Log logout (AWAITING execution to ensure it reaches server before Auth token is killed)
         await logActivity(ActivityType.LOGOUT, {
             timestamp: new Date().toISOString()
         });
     } catch (error) {
-        // Silent failure - don't block logout if logging fails
         console.error('[Auth] Logout logging failed:', error);
     }
 
     return firebaseSignOut(auth);
 }
 
+/**
+ * Submit Signup Request
+ * REPLACED: Uses secure Cloud Function 'mobile_requestSignup'
+ */
 export async function submitSignupRequest(requestData) {
-    // requestData: { name, email, password, phone, employeeId, pushToken }
     try {
-        const { employeeId, ...rest } = requestData;
-        await set(ref(db, `signupRequests/${employeeId}`), {
-            ...rest,
-            employeeId,
-            timestamp: Date.now(),
-            submittedAt: new Date().toISOString()
+        // requestData: { name, email, password, phone, employeeId, pushToken }
+        await mobile_requestSignup({
+            ...requestData,
+            deviceInfo: getDeviceInfo()
         });
         return { success: true };
     } catch (error) {
@@ -232,14 +219,12 @@ export async function submitSignupRequest(requestData) {
 
 /**
  * Subscribe to user's isActive status
- * @param {string} userId
- * @param {function} callback - Called with (isActive: boolean)
- * @returns {function} unsubscribe function
+ * Read-only listener, safe to keep.
  */
 export function subscribeToUserStatus(userId, callback) {
     const userStatusRef = ref(db, `users/${userId}/isActive`);
     return onValue(userStatusRef, (snapshot) => {
-        const isActive = snapshot.exists() ? snapshot.val() : true; // Default to true if not set, or handle as needed
+        const isActive = snapshot.exists() ? snapshot.val() : true;
         callback(isActive);
     });
 }

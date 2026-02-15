@@ -7,9 +7,8 @@ import * as Updates from 'expo-updates';
 import UpdateModal from './src/components/UpdateModal';
 import MaintenanceModal from './src/components/MaintenanceModal';
 import LocationEnablerPopup from './src/components/LocationEnablerPopup';
-import { setupNotificationListeners, registerForPushNotifications } from './src/services/notifications';
+import { setupNotificationListeners } from './src/services/notifications';
 import { auth } from './src/services/firebaseConfig';
-import { updateUserSessionData } from './src/services/auth';
 import { requestLocationPermissions } from './src/services/location';
 
 export default function App() {
@@ -54,20 +53,7 @@ export default function App() {
     return () => listeners.remove();
   }, []);
 
-  // Register for push notifications when user logs in
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      if (user) {
-        // User is logged in, register for push notifications
-        await registerForPushNotifications();
 
-        // Check and update app version/permissions if changed
-        await updateUserSessionData(user.uid);
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
 
 
 

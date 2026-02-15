@@ -62,12 +62,7 @@ export async function getCurrentLocation() {
             maximumAge: 5000 // Reduced cache time (5s) for fresher data
         });
 
-        // Log successful location retrieval (crash-proof)
-        logActivityAsync(ActivityType.LOCATION_SUCCESS, {
-            accuracy: location.coords.accuracy,
-            latitude: location.coords.latitude,
-            longitude: location.coords.longitude
-        });
+
 
         return location;
     } catch (error) {

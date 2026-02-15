@@ -9,6 +9,8 @@ import { signOut } from 'firebase/auth';
 import { ref, get, onValue, push, set } from 'firebase/database';
 import { getCurrentLocation, calculateDistance } from '../../services/location';
 import { performSecurityChecks, resetLocationTracking } from '../../services/securityChecks';
+import { logActivityAsync, ActivityType } from '../../services/activityLog';
+import { logoutUser } from '../../services/auth'; // Added
 import { fetchTodayAttendance, submitAttendance, getAttendanceState, normalizeAfternoon, subscribeToTodayAttendance } from '../../services/attendance';
 import { getServerISOString, getServerTime } from '../../services/timeManager';
 import * as Location from 'expo-location';
@@ -377,8 +379,26 @@ export default function HomeScreen({ navigation }) {
 
             if (dist <= radius) {
                 setLocationStatus({ verified: true, message: `Verified (${dist.toFixed(0)}m)` });
+
+                // Log verified location (IN)
+                logActivityAsync(ActivityType.LOCATION_SUCCESS_IN, {
+                    accuracy: location.coords.accuracy,
+                    latitude: location.coords.latitude,
+                    longitude: location.coords.longitude,
+                    distance: dist,
+                    radius: radius
+                });
             } else {
                 setLocationStatus({ verified: false, message: `Outside Range (${dist.toFixed(0)}m)` });
+
+                // Log unverified location (OUT)
+                logActivityAsync(ActivityType.LOCATION_SUCCESS_OUT, {
+                    accuracy: location.coords.accuracy,
+                    latitude: location.coords.latitude,
+                    longitude: location.coords.longitude,
+                    distance: dist,
+                    radius: radius
+                });
             }
 
             // 4. Update UI State rules
@@ -567,7 +587,7 @@ export default function HomeScreen({ navigation }) {
                 text: "Logout",
                 onPress: () => {
                     resetLocationTracking(); // Clear location jump tracking
-                    signOut(auth);
+                    logoutUser(); // Correctly calls the wrapper with logging
                 }
             }
         ]);
@@ -695,6 +715,10 @@ export default function HomeScreen({ navigation }) {
                                     ]}
                                     onPress={() => {
                                         if (!uiState.morningEnabled) {
+                                            if (!locationStatus.verified) {
+                                                Alert.alert("Location Unverified", locationStatus.message || "You are outside the branch radius.");
+                                                return;
+                                            }
                                             Alert.alert("Time Window Locked", "Morning check-in is only available between 08:00 AM and 11:59 AM.");
                                             return;
                                         }
@@ -744,6 +768,10 @@ export default function HomeScreen({ navigation }) {
                                         ]}
                                         onPress={() => {
                                             if (!uiState.afternoonEnabled) {
+                                                if (!locationStatus.verified) {
+                                                    Alert.alert("Location Unverified", locationStatus.message || "You are outside the branch radius.");
+                                                    return;
+                                                }
                                                 Alert.alert("Time Window Locked", "Afternoon check-in/out are only available between 12:00 PM and 02:59 PM.");
                                                 return;
                                             }
@@ -833,6 +861,10 @@ export default function HomeScreen({ navigation }) {
                                     ]}
                                     onPress={() => {
                                         if (!uiState.exitEnabled) {
+                                            if (!locationStatus.verified) {
+                                                Alert.alert("Location Unverified", locationStatus.message || "You are outside the branch radius.");
+                                                return;
+                                            }
                                             // More specific messages based on why it's disabled
                                             if (morningCheck && afternoonStatus === 'None') {
                                                 // Valid flow but maybe outside time

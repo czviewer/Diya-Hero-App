@@ -1,8 +1,11 @@
-import { ref, get, update, onValue } from 'firebase/database';
+import { ref, get, onValue } from 'firebase/database';
 import { db, auth } from './firebaseConfig';
 import { getServerTime, getServerISOString } from './timeManager';
 import { DateTime } from 'luxon';
-import { logActivityAsync, ActivityType } from './activityLog';
+import * as Device from 'expo-device';
+import { Platform } from 'react-native';
+import * as Application from 'expo-application';
+import { mobile_submitAttendance } from './cloudFunctions';
 
 /**
  * Normalizes the afternoon status.
@@ -85,66 +88,40 @@ export function getCurrentTimeParts() {
 
 /**
  * Validates and submits attendance.
+ * REPLACED: Uses secure Cloud Function 'mobile_submitAttendance'
  */
+function getDeviceInfo() {
+    return {
+        brand: Device.brand,
+        modelName: Device.modelName,
+        osName: Device.osName,
+        osVersion: Device.osVersion,
+        platform: Platform.OS,
+        appVersion: Application.nativeApplicationVersion || '1.0.0'
+    };
+}
+
 export async function submitAttendance(userData, payload) {
     if (!userData || !userData.branch) throw new Error("User profile incomplete (missing branch).");
 
-    const { dateString } = getCurrentTimeParts();
-    const timestamp = getServerISOString();
-
-    const dt = DateTime.fromISO(dateString, { zone: "Asia/Kolkata" });
-    const year = String(dt.year);
-    const month = String(dt.month).padStart(2, "0");
-    const day = String(dt.day).padStart(2, "0");
-
-    const attendancePath = `attendance/${year}/${month}/${day}/${userData.branch}/${userData.subdivision}/${userData.employeeId}`;
-    const attendanceRef = ref(db, attendancePath);
-
-    const finalPayload = {
-        ...payload,
-        timestamp, // Overall submission timestamp
-        // Ensure critical fields are set if passed
-    };
-
-    await update(attendanceRef, finalPayload);
-
-    // Log activity after successful submission (crash-proof)
     try {
-        // Determine activity type based on payload
-        let activityType = null;
-        const metadata = {
+        await mobile_submitAttendance({
             branch: userData.branch,
             subdivision: userData.subdivision,
-            timestamp,
-        };
-
-        if (payload.anExit === true) {
-            // Exit/Check-out
-            activityType = ActivityType.CHECK_OUT;
-            metadata.exitTime = payload.anExitTime || timestamp;
-        } else if (payload.morning === true || payload.afternoon) {
-            // Check-in (morning or afternoon)
-            activityType = ActivityType.CHECK_IN;
-            if (payload.morning) {
-                metadata.type = 'morning';
-                metadata.morningTime = payload.morningTime || timestamp;
+            payload: {
+                ...payload,
+                deviceInfo: getDeviceInfo()
             }
-            if (payload.afternoon) {
-                metadata.type = payload.afternoon === 'Enters' ? 'afternoon_enter' : 'afternoon_leave';
-                metadata.afternoonStatus = payload.afternoon;
-            }
-        }
+        });
 
-        // Log if we identified an activity type
-        if (activityType) {
-            logActivityAsync(activityType, metadata);
-        }
-    } catch (logError) {
-        // Extra safety net - logging errors should never break attendance submission
-        console.error('[Attendance] Activity logging error:', logError);
+        // NOTE: We don't need to manually log activity anymore.
+        // The Cloud Function handles logging atomically.
+
+        return true;
+    } catch (error) {
+        console.error("Error submitting attendance:", error);
+        throw error;
     }
-
-    return true;
 }
 
 /**

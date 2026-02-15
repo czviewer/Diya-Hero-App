@@ -1,12 +1,19 @@
-import { ref, push, set, query, orderByChild, equalTo, onValue } from 'firebase/database';
+import { ref, query, orderByChild, equalTo, onValue } from 'firebase/database';
+import * as Device from 'expo-device';
+import * as Application from 'expo-application';
+import { Platform } from 'react-native';
 import { db } from './firebaseConfig';
-import { getServerISOString } from './timeManager';
+import { mobile_submitIssue } from './cloudFunctions';
 
 /**
  * Submit a new issue to Firebase
  * @param {Object} userData - User data from Firebase (must include uid, name, email, branch)
  * @param {Object} issueData - Issue data containing category, subject, description
  * @returns {Promise<string>} - Returns the issue ID
+ */
+/**
+ * Submit a new issue to Firebase
+ * REPLACED: Uses secure Cloud Function 'mobile_submitIssue'
  */
 export const submitIssue = async (userData, issueData) => {
     try {
@@ -18,33 +25,26 @@ export const submitIssue = async (userData, issueData) => {
             throw new Error('Category, subject, and description are required');
         }
 
-        // Generate a new issue ID
-        const issuesRef = ref(db, 'issues');
-        const newIssueRef = push(issuesRef);
-        const issueId = newIssueRef.key;
-
-        // Get server timestamp
-        const timestamp = getServerISOString();
-
-        // Prepare issue data
-        const issue = {
-            id: issueId,
-            userId: userData.uid,
-            userName: userData.name || 'Unknown',
-            userEmail: userData.email || 'Unknown',
-            branch: userData.branch || 'Unknown',
+        const result = await mobile_submitIssue({
             category: issueData.category,
-            subject: issueData.subject.trim(),
-            description: issueData.description.trim(),
-            status: 'pending',
-            createdAt: timestamp,
-            updatedAt: timestamp
-        };
+            subject: issueData.subject,
+            description: issueData.description,
+            userData: {
+                name: userData.name,
+                email: userData.email,
+                branch: userData.branch
+            },
+            deviceInfo: {
+                brand: Device.brand,
+                modelName: Device.modelName,
+                osName: Device.osName,
+                osVersion: Device.osVersion,
+                platform: Platform.OS,
+                appVersion: Application.nativeApplicationVersion || '1.0.0'
+            }
+        });
 
-        // Save to Firebase
-        await set(newIssueRef, issue);
-
-        return issueId;
+        return result.issueId;
     } catch (error) {
         console.error('[issueService] Error submitting issue:', error);
         throw error;
