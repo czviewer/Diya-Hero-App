@@ -52,16 +52,21 @@ export const Button = ({ title, onPress, type = 'primary', disabled, loading, ic
     );
 };
 
-export const Input = React.forwardRef(({ label, icon, error, ...props }, ref) => (
+export const Input = React.forwardRef(({ label, icon, rightIcon, error, ...props }, ref) => (
     <View style={styles.inputContainer}>
         {label && <Text style={styles.label}>{label}</Text>}
-        <View style={[styles.inputWrapper, error && styles.inputError]}>
+        <View style={[styles.inputWrapper, error && styles.inputError, rightIcon && styles.inputWrapperWithIcon]}>
             <TextInput
                 ref={ref}
-                style={styles.input}
+                style={[styles.input, rightIcon && styles.inputWithIcon]}
                 placeholderTextColor="#9ca3af"
                 {...props}
             />
+            {rightIcon && (
+                <View style={styles.rightIconContainer}>
+                    {rightIcon}
+                </View>
+            )}
         </View>
         {error && <Text style={styles.errorText}>{error}</Text>}
     </View>
@@ -172,10 +177,24 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         height: 56,
         justifyContent: 'center',
+        position: 'relative',
+    },
+    inputWrapperWithIcon: {
+        paddingRight: 50,
     },
     input: {
         fontSize: 16,
         color: COLORS.textMain,
+    },
+    inputWithIcon: {
+        flex: 1,
+    },
+    rightIconContainer: {
+        position: 'absolute',
+        right: 16,
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     inputError: {
         borderColor: COLORS.error,

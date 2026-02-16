@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
+import { Eye, EyeOff } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Input, Card } from '../../components/ui';
 import { submitSignupRequest } from '../../services/auth';
@@ -9,6 +10,7 @@ export default function SignupScreen({ navigation }) {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [employeeId, setEmployeeId] = useState('');
     const [phone, setPhone] = useState('');
     const [loading, setLoading] = useState(false);
@@ -79,8 +81,17 @@ export default function SignupScreen({ navigation }) {
                             label="Password"
                             value={password}
                             onChangeText={setPassword}
-                            secureTextEntry
+                            secureTextEntry={!showPassword}
                             placeholder="Min 6 characters"
+                            rightIcon={
+                                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                                    {showPassword ? (
+                                        <EyeOff size={22} color="#6b7280" />
+                                    ) : (
+                                        <Eye size={22} color="#6b7280" />
+                                    )}
+                                </TouchableOpacity>
+                            }
                         />
                         <Input
                             label="Employee ID"

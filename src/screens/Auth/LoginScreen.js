@@ -3,12 +3,13 @@ import { View, Text, StyleSheet, Image, KeyboardAvoidingView, Platform, Alert, S
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Input, Card } from '../../components/ui';
 import { loginUser } from '../../services/auth';
-import { MessageCircle } from 'lucide-react-native';
+import { MessageCircle, Eye, EyeOff } from 'lucide-react-native';
 
 
 export default function LoginScreen({ navigation }) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [isKeyboardVisible, setKeyboardVisible] = useState(false);
     const passwordInputRef = React.useRef(null);
@@ -111,11 +112,20 @@ export default function LoginScreen({ navigation }) {
                             ref={passwordInputRef}
                             label="Password"
                             placeholder="Enter your password"
-                            secureTextEntry
+                            secureTextEntry={!showPassword}
                             value={password}
                             onChangeText={setPassword}
                             returnKeyType="done"
                             onSubmitEditing={handleLogin}
+                            rightIcon={
+                                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                                    {showPassword ? (
+                                        <EyeOff size={22} color="#6b7280" />
+                                    ) : (
+                                        <Eye size={22} color="#6b7280" />
+                                    )}
+                                </TouchableOpacity>
+                            }
                         />
 
                         <View style={{ height: 20 }} />
