@@ -40,21 +40,32 @@ function getDeviceInfo() {
 
 /**
  * Silently fetch current GPS coordinates for logging.
+ * @param {boolean} fastMode - If true, only uses cached location to avoid UI blocking.
  */
-async function getQuickLocation() {
+async function getQuickLocation(fastMode = false) {
     try {
         const { status } = await Location.getForegroundPermissionsAsync();
         if (status !== 'granted') return null;
 
-        const loc = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
-            timeout: 5000,
-        });
-        return {
-            latitude: loc.coords.latitude,
-            longitude: loc.coords.longitude,
-            accuracy: loc.coords.accuracy,
-        };
+        // Try to get instant cached location first (very fast)
+        let loc = await Location.getLastKnownPositionAsync();
+
+        // If no cached location exists and we aren't restricted by fastMode, wait for a fresh one
+        if (!loc && !fastMode) {
+            loc = await Location.getCurrentPositionAsync({
+                accuracy: Location.Accuracy.Balanced,
+                timeout: 5000,
+            });
+        }
+
+        if (loc) {
+            return {
+                latitude: loc.coords.latitude,
+                longitude: loc.coords.longitude,
+                accuracy: loc.coords.accuracy,
+            };
+        }
+        return null;
     } catch (error) {
         return null;
     }
@@ -68,18 +79,27 @@ export async function logActivity(type, metadata = {}) {
         const user = auth.currentUser;
         if (!user) return false;
 
-        // OPTIMIZATION: Skip location for LOGOUT to ensure it sends before auth token dies
-        let location = null;
-        if (type !== ActivityType.LOGOUT) {
-            location = await getQuickLocation();
-        }
+        // Fetch location for everything. Use fastMode for LOGOUT to prevent blocking the UI
+        const isLogout = type === ActivityType.LOGOUT;
+        const location = await getQuickLocation(isLogout);
         const deviceInfo = getDeviceInfo();
+
+        // Merge distance/radius into location if provided in metadata for consistency
+        const finalLocation = location ? {
+            ...location,
+            distance: metadata.distance ?? metadata.dist,
+            radius: metadata.radius
+        } : null;
 
         // Call Secure Cloud Function
         await mobile_logActivity({
             type,
-            metadata,
-            location,
+            metadata: {
+                ...metadata,
+                source: 'MOBILE_APP',
+                userRole: 'Employee'
+            },
+            location: finalLocation,
             deviceInfo
         });
 

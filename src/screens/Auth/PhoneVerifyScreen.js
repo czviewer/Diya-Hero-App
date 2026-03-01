@@ -5,10 +5,12 @@ import { WebView } from 'react-native-webview';
 import { Button, Input, Card } from '../../components/ui';
 import { auth, db } from '../../services/firebaseConfig';
 import { PhoneAuthProvider, linkWithCredential } from 'firebase/auth';
-import { ref, update, get } from 'firebase/database';
+import { mobile_verifyUser } from '../../services/cloudFunctions';
+import { ref, get } from 'firebase/database';
 
 export default function PhoneVerifyScreen({ navigation, route }) {
     const webViewRef = useRef(null);
+    const otpSentRef = useRef(false);
     const [last4Digits, setLast4Digits] = useState('');
     const [step, setStep] = useState('check');
     const [otp, setOtp] = useState('');
@@ -31,6 +33,7 @@ export default function PhoneVerifyScreen({ navigation, route }) {
 
         setLoading(true);
         try {
+            // Fetch profile to get registered phone number (Read is allowed)
             const snapshot = await get(ref(db, `users/${user.uid}`));
             if (!snapshot.exists()) throw new Error("User profile not found.");
 
@@ -44,6 +47,7 @@ export default function PhoneVerifyScreen({ navigation, route }) {
             }
 
             setPhoneNumberForWeb(phone);
+            otpSentRef.current = false; // Reset guard
             setShowWebView(true);
             setLoading(false);
 
@@ -73,30 +77,57 @@ export default function PhoneVerifyScreen({ navigation, route }) {
     };
 
     const handleVerifyOtp = async () => {
-        if (!otp || !verificationId) return;
+        const cleanOtp = otp.trim();
+        if (!cleanOtp || !verificationId) {
+            Alert.alert("Error", "Please enter the OTP.");
+            return;
+        }
         setLoading(true);
         try {
-            const credential = PhoneAuthProvider.credential(verificationId, otp);
+            const credential = PhoneAuthProvider.credential(verificationId, cleanOtp);
             await linkWithCredential(user, credential);
 
-            await update(ref(db, `users/${user.uid}`), { isVerified: true });
+            await mobile_verifyUser();
 
             Alert.alert("Success", "Phone verified!", [
                 {
                     text: "OK", onPress: () => {
                         user.reload().then(() => {
-                            // User reload might need logic in AppNavigator to pick up change
+                            navigation.replace('Home');
                         });
                     }
                 }
             ]);
         } catch (error) {
-            console.error(error);
+            console.error("OTP Verification Error:", error);
             if (error.code === 'auth/credential-already-in-use') {
-                await update(ref(db, `users/${user.uid}`), { isVerified: true });
-                Alert.alert("Verified", "Phone was already linked. Profile updated.");
+                await mobile_verifyUser();
+                Alert.alert("Success", "Phone verified!", [
+                    {
+                        text: "OK", onPress: () => {
+                            user.reload().then(() => {
+                                navigation.replace('Home');
+                            });
+                        }
+                    }
+                ]);
+            } else if (error.code === 'auth/provider-already-linked') {
+                await mobile_verifyUser();
+                Alert.alert("Success", "Phone verified!", [
+                    {
+                        text: "OK", onPress: () => {
+                            user.reload().then(() => {
+                                navigation.replace('Home');
+                            });
+                        }
+                    }
+                ]);
+            } else if (error.code === 'auth/invalid-verification-code') {
+                Alert.alert("Error", "The OTP entered is incorrect.");
+            } else if (error.code === 'auth/code-expired') {
+                Alert.alert("Error", "The OTP has expired. Please request a new one.");
             } else {
-                Alert.alert("Error", "Invalid OTP.");
+                Alert.alert("Error", error.message || "Verification failed.");
             }
         } finally {
             setLoading(false);
@@ -121,7 +152,18 @@ export default function PhoneVerifyScreen({ navigation, route }) {
                 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
                 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
                 <style>
-                    body { display: flex; justify-content: center; align-items: center; height: 100vh; font-family: sans-serif; }
+                <style>
+                    body { 
+                        display: flex; 
+                        flex-direction: column; 
+                        justify-content: center; 
+                        align-items: center; 
+                        height: 100vh; 
+                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                        background-color: #ffffff;
+                        gap: 20px;
+                        margin: 0;
+                    }
                     .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 2s linear infinite; }
                     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
                 </style>
@@ -193,7 +235,9 @@ export default function PhoneVerifyScreen({ navigation, route }) {
                         javaScriptEnabled={true}
                         onMessage={handleWebMessage}
                         onLoadEnd={() => {
-                            if (webViewRef.current && phoneNumberForWeb) {
+                            if (webViewRef.current && phoneNumberForWeb && !otpSentRef.current) {
+                                otpSentRef.current = true;
+                                console.log("Sending OTP start message to WebView");
                                 webViewRef.current.postMessage(JSON.stringify({ type: 'start', phone: phoneNumberForWeb }));
                             }
                         }}

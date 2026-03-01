@@ -32,7 +32,7 @@ const MaintenanceModal = () => {
                     <ShieldAlert size={80} color="#dc2626" style={{ marginBottom: 20 }} />
                     <Text style={styles.title}>System Under Maintenance</Text>
                     <Text style={styles.message}>
-                        The Hero App is currently undergoing critical maintenance updates.
+                        The App is currently undergoing critical maintenance updates.
                     </Text>
                     <Text style={styles.subMessage}>
                         Please check back later. We apologize for the inconvenience.

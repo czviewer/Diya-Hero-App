@@ -101,17 +101,22 @@ function getDeviceInfo() {
     };
 }
 
-export async function submitAttendance(userData, payload) {
+export async function submitAttendance(userData, payload, location = null, currentBranch = null) {
     if (!userData || !userData.branch) throw new Error("User profile incomplete (missing branch).");
+
+    const branchToSubmit = currentBranch || userData.branch;
 
     try {
         await mobile_submitAttendance({
-            branch: userData.branch,
+            branch: branchToSubmit,
             subdivision: userData.subdivision,
             payload: {
                 ...payload,
-                deviceInfo: getDeviceInfo()
-            }
+                deviceInfo: getDeviceInfo(),
+                source: 'MOBILE_APP',
+                userRole: 'Employee'
+            },
+            location // GPS coordinates at time of punch (from verified location check)
         });
 
         // NOTE: We don't need to manually log activity anymore.

@@ -6,6 +6,7 @@ import { ArrowLeft, Send, Clock, CheckCircle, AlertCircle } from 'lucide-react-n
 import { auth, db } from '../../services/firebaseConfig';
 import { ref, get } from 'firebase/database';
 import { submitIssue, ISSUE_CATEGORIES, subscribeToUserIssues } from '../../services/issueService';
+import * as Location from 'expo-location';
 
 export default function IssueReportingScreen({ navigation }) {
     const [userData, setUserData] = useState(null);
@@ -103,7 +104,26 @@ export default function IssueReportingScreen({ navigation }) {
 
         setLoading(true);
         try {
-            const issueId = await submitIssue(userData, formData);
+            // Silently fetch location for the ISSUE_CREATED log
+            let issueLocation = null;
+            try {
+                const { status } = await Location.getForegroundPermissionsAsync();
+                if (status === 'granted') {
+                    const loc = await Location.getCurrentPositionAsync({
+                        accuracy: Location.Accuracy.Balanced,
+                        timeout: 5000,
+                    });
+                    issueLocation = {
+                        latitude: loc.coords.latitude,
+                        longitude: loc.coords.longitude,
+                        accuracy: loc.coords.accuracy
+                    };
+                }
+            } catch (locErr) {
+                // Silent - location is optional for the log
+            }
+
+            const issueId = await submitIssue(userData, formData, issueLocation);
 
             Alert.alert(
                 'Success',

@@ -2,9 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, KeyboardAvoidingView, Platform, Alert, ScrollView, Keyboard, Linking, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Input, Card } from '../../components/ui';
-import { loginUser } from '../../services/auth';
-import { MessageCircle, Eye, EyeOff } from 'lucide-react-native';
+import { loginUser, sendMobilePasswordReset } from '../../services/auth';
+import { mapErrorToMessage } from '../../utils/errorMapper';
+import { MessageCircle, Eye, EyeOff, KeyRound } from 'lucide-react-native';
 
+
+import ForgotPasswordModal from '../../components/ForgotPasswordModal';
 
 export default function LoginScreen({ navigation }) {
     const [email, setEmail] = useState('');
@@ -12,6 +15,7 @@ export default function LoginScreen({ navigation }) {
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+    const [showResetModal, setShowResetModal] = useState(false);
     const passwordInputRef = React.useRef(null);
 
     useEffect(() => {
@@ -46,20 +50,8 @@ export default function LoginScreen({ navigation }) {
             // Navigation is handled by AppNavigator automatically on auth state change
         } catch (error) {
             console.error('[LoginScreen] Login error:', error);
-            let msg = "Login failed.";
-
-            // Check for device binding error
-            if (error.message && error.message.includes("device")) {
-                msg = error.message;
-            } else if (error.message && error.message.includes("registered")) {
-                msg = error.message;
-            } else if (error.code === 'auth/invalid-credential') {
-                msg = "Invalid email or password.";
-            } else if (error.message) {
-                msg = error.message;
-            }
-
-            Alert.alert("Login Failed", msg);
+            const msg = mapErrorToMessage(error);
+            Alert.alert("Access Denied", msg);
         } finally {
             setLoading(false);
         }
@@ -67,6 +59,10 @@ export default function LoginScreen({ navigation }) {
 
     const handleHelp = () => {
         navigation.navigate('IssueReporting');
+    };
+
+    const handleForgotPassword = () => {
+        setShowResetModal(true);
     };
 
     return (
@@ -139,6 +135,12 @@ export default function LoginScreen({ navigation }) {
                         <TouchableOpacity onPress={() => navigation.navigate('Signup')} style={styles.linkContainer}>
                             <Text style={styles.linkText}>New Employee? <Text style={styles.linkBold}>Sign Up</Text></Text>
                         </TouchableOpacity>
+
+                        <TouchableOpacity onPress={handleForgotPassword} style={[styles.linkContainer, { marginTop: 15 }]}>
+                            <Text style={styles.forgotText}>
+                                <KeyRound size={14} color="#6b7280" /> Forgot Password?
+                            </Text>
+                        </TouchableOpacity>
                     </Card>
 
                     <View style={styles.footer}>
@@ -154,6 +156,12 @@ export default function LoginScreen({ navigation }) {
             >
                 <MessageCircle size={28} color="white" />
             </TouchableOpacity>
+
+            <ForgotPasswordModal
+                visible={showResetModal}
+                onClose={() => setShowResetModal(false)}
+                initialEmail={email}
+            />
         </SafeAreaView >
     );
 }
@@ -232,6 +240,11 @@ const styles = StyleSheet.create({
     linkBold: {
         color: '#b91c1c',
         fontWeight: '700',
+    },
+    forgotText: {
+        fontSize: 14,
+        color: '#6b7280',
+        fontWeight: '500',
     },
     footer: {
         marginTop: 40,

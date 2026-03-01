@@ -1,13 +1,15 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Alert, Switch, TouchableOpacity, Image, ActivityIndicator, Modal, Linking } from 'react-native';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, RefreshControl, Alert, Switch, TouchableOpacity, Image, ActivityIndicator, Modal, Linking, Animated } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Card } from '../../components/ui';
 
 import { auth, db } from '../../services/firebaseConfig';
 import { signOut } from 'firebase/auth';
-import { ref, get, onValue, push, set } from 'firebase/database';
+import { ref, get, onValue, push } from 'firebase/database';
 import { getCurrentLocation, calculateDistance } from '../../services/location';
+import { mobile_reportLocation } from '../../services/cloudFunctions';
 import { performSecurityChecks, resetLocationTracking } from '../../services/securityChecks';
 import { logActivityAsync, ActivityType } from '../../services/activityLog';
 import { logoutUser } from '../../services/auth'; // Added
@@ -16,7 +18,7 @@ import { getServerISOString, getServerTime } from '../../services/timeManager';
 import * as Location from 'expo-location';
 
 import { DateTime } from 'luxon';
-import { User, LogOut, Clock, CheckCircle, AlertTriangle, Coffee, XCircle, MessageCircle, MapPin } from 'lucide-react-native';
+import { User, LogOut, Clock, CheckCircle, AlertTriangle, Coffee, XCircle, MessageCircle, MapPin, Info } from 'lucide-react-native';
 
 const DailyStatusCard = ({ attendanceData, loading }) => {
     // 1. Determine Status
@@ -120,6 +122,9 @@ export default function HomeScreen({ navigation }) {
     const [attendanceData, setAttendanceData] = useState(null);
     const [currentTime, setCurrentTime] = useState(DateTime.now());
 
+    // Track the most recent GPS coordinates (used to attach location to attendance logs)
+    const [currentLocation, setCurrentLocation] = useState(null);
+
     // Form State
     const [morningCheck, setMorningCheck] = useState(false);
     const [afternoonStatus, setAfternoonStatus] = useState('None'); // None, Enters, Leaves
@@ -127,6 +132,11 @@ export default function HomeScreen({ navigation }) {
 
     // Continuous Location State
     const [branchInfo, setBranchInfo] = useState(null);
+    const [allBranches, setAllBranches] = useState(null); // Added for dynamic traveling tracking
+
+    // Track last known location-verified state from the continuous watcher.
+    // null = baseline not yet set by watcher (avoids double-logging on first tick).
+    const prevVerifiedRef = useRef(null);
 
     // Share Location Button (admin-controlled visibility)
     const [showShareLocationBtn, setShowShareLocationBtn] = useState(false);
@@ -140,6 +150,43 @@ export default function HomeScreen({ navigation }) {
         message: null
     });
 
+
+    // Tip Frequency & Animation
+    const [showTip, setShowTip] = useState(false);
+    const marqueeAnim = useRef(new Animated.Value(0)).current;
+    const [containerWidth, setContainerWidth] = useState(0);
+    const [textWidth, setTextWidth] = useState(0);
+
+    useEffect(() => {
+        const checkTipFrequency = async () => {
+            try {
+                const countStr = await AsyncStorage.getItem('tip_refresh_count');
+                const count = countStr ? parseInt(countStr, 10) : 0;
+                if (count < 5) {
+                    setShowTip(true);
+                    await AsyncStorage.setItem('tip_refresh_count', (count + 1).toString());
+                }
+            } catch (e) {
+                console.warn('Error checking tip frequency:', e);
+            }
+        };
+        checkTipFrequency();
+    }, []);
+
+    useEffect(() => {
+        if (showTip && containerWidth > 0 && textWidth > 0) {
+            const startMarquee = () => {
+                marqueeAnim.setValue(containerWidth);
+                Animated.timing(marqueeAnim, {
+                    toValue: -textWidth,
+                    duration: 8000 + textWidth * 10, // Adjust speed based on text length
+                    useNativeDriver: true,
+                    isInteraction: false,
+                }).start(() => startMarquee());
+            };
+            startMarquee();
+        }
+    }, [showTip, containerWidth, textWidth]);
 
     useEffect(() => {
         const updateTime = () => {
@@ -225,21 +272,97 @@ export default function HomeScreen({ navigation }) {
                         distanceInterval: 0, // Force update even if stationary
                     },
                     (newLocation) => {
-                        // Recalculate distance and update UI
-                        const dist = calculateDistance(
+                        // Start with current branchInfo
+                        let currentBranchData = branchInfo;
+                        const bLat = currentBranchData.latitude ?? currentBranchData.lat;
+                        const bLng = currentBranchData.longitude ?? currentBranchData.lng;
+
+                        let dist = calculateDistance(
                             newLocation.coords.latitude,
                             newLocation.coords.longitude,
-                            branchInfo.latitude,
-                            branchInfo.longitude
+                            bLat,
+                            bLng
                         );
+                        let radius = Number(currentBranchData.radius) || 100;
+                        let currentBranchId = currentBranchData.id || userData.branch;
 
-                        const radius = Number(branchInfo.radius) || 100;
+                        // Dynamic Detection for Traveling Employees if outside current branch
+                        if (userData.isTravelingEmployee && allBranches) {
+                            let minDistance = Infinity;
+                            let newClosestBranch = null;
+
+                            Object.values(allBranches).forEach(bData => {
+                                const targetLat = bData.latitude ?? bData.lat;
+                                const targetLng = bData.longitude ?? bData.lng;
+
+                                if (targetLat === undefined || targetLng === undefined) return;
+
+                                const bDist = calculateDistance(
+                                    newLocation.coords.latitude,
+                                    newLocation.coords.longitude,
+                                    targetLat,
+                                    targetLng
+                                );
+
+                                // Find the absolute closest branch
+                                if (bDist < minDistance) {
+                                    minDistance = bDist;
+                                    newClosestBranch = bData;
+                                }
+                            });
+
+                            if (newClosestBranch && newClosestBranch.id !== currentBranchId) {
+                                // We moved! Update state to the new closest branch
+                                setBranchInfo(newClosestBranch);
+                                currentBranchData = newClosestBranch;
+                                dist = minDistance;
+                                radius = Number(newClosestBranch.radius) || 100;
+                                currentBranchId = newClosestBranch.id;
+                            }
+                        }
+
+                        // Store latest GPS coords for attendance log attachment
+                        setCurrentLocation({
+                            latitude: newLocation.coords.latitude,
+                            longitude: newLocation.coords.longitude,
+                            accuracy: newLocation.coords.accuracy,
+                            distance: Math.round(dist),
+                            radius: radius
+                        });
+
                         const isVerified = dist <= radius;
 
+                        // ── Transition logging ───────────────────────────────
+                        // Fire LOCATION_SUCCESS_IN only when moving inside after
+                        // the watcher has confirmed an outside state (not on the
+                        // very first tick, where verifyLocationAndFetchAttendance
+                        // already wrote the initial log).
+                        if (prevVerifiedRef.current === false && isVerified) {
+                            logActivityAsync(ActivityType.LOCATION_SUCCESS_IN, {
+                                accuracy: newLocation.coords.accuracy,
+                                latitude: newLocation.coords.latitude,
+                                longitude: newLocation.coords.longitude,
+                                distance: Math.round(dist),
+                                radius: radius,
+                            });
+                        }
+                        prevVerifiedRef.current = isVerified;
+                        // ─────────────────────────────────────────────────────
+
                         if (isVerified) {
-                            setLocationStatus({ verified: true, message: `Verified (${dist.toFixed(0)}m)` });
+                            let msg = `Verified (${dist.toFixed(0)}m)`;
+                            if (userData.isTravelingEmployee && currentBranchId !== userData.branch) {
+                                const branchName = currentBranchData.name || currentBranchId;
+                                msg = `Visiting ${branchName} (${dist.toFixed(0)}m)`;
+                            }
+                            setLocationStatus({ verified: true, message: msg });
                         } else {
-                            setLocationStatus({ verified: false, message: `Outside Range (${dist.toFixed(0)}m)` });
+                            let msg = `Outside Range (${dist.toFixed(0)}m)`;
+                            if (userData.isTravelingEmployee && currentBranchId !== userData.branch) {
+                                const branchName = currentBranchData.name || currentBranchId;
+                                msg = `Outside ${branchName} (${dist.toFixed(0)}m)`;
+                            }
+                            setLocationStatus({ verified: false, message: msg });
                         }
 
                         // Update UI Buttons (Dynamic Rule Check)
@@ -259,6 +382,8 @@ export default function HomeScreen({ navigation }) {
             if (subscription) {
                 subscription.remove();
             }
+            // Reset watcher baseline so the next mount starts fresh.
+            prevVerifiedRef.current = null;
         };
     }, [branchInfo, userData, attendanceData]); // Re-run if branch or attendance data changes
 
@@ -321,6 +446,29 @@ export default function HomeScreen({ navigation }) {
                 return;
             }
 
+            // Store latest GPS coords for attendance log attachment (Calculate distance if branch exists)
+            let initialDistance = undefined;
+            let initialRadius = 200;
+
+            if (branchSnap.exists()) {
+                const bData = branchSnap.val();
+                initialRadius = Number(bData.radius) || 100;
+                initialDistance = calculateDistance(
+                    location.coords.latitude,
+                    location.coords.longitude,
+                    bData.latitude,
+                    bData.longitude
+                );
+            }
+
+            setCurrentLocation({
+                latitude: location.coords.latitude,
+                longitude: location.coords.longitude,
+                accuracy: location.coords.accuracy,
+                distance: initialDistance !== undefined ? Math.round(initialDistance) : undefined,
+                radius: initialRadius
+            });
+
             // 2.5. SECURITY CHECKS - Check for manipulation attempts
             setLocationStatus({ verified: false, message: "Running security checks..." });
             const securityResult = await performSecurityChecks(location);
@@ -359,50 +507,121 @@ export default function HomeScreen({ navigation }) {
                 return;
             }
 
-            // 3. Validate Branch
-            if (!branchSnap.exists()) {
+            // 3. Validate Branch & Dynamic Detection for Traveling Employees
+            let finalBranchData = null;
+            let finalDistance = undefined;
+            let finalBranchId = profile.branch;
+
+            if (profile.isTravelingEmployee) {
+                try {
+                    // Fetch all branches to find the closest one
+                    const allBranchesSnap = await get(ref(db, `branches`));
+                    if (allBranchesSnap.exists()) {
+                        const allBranchesData = allBranchesSnap.val();
+
+                        // Map IDs into the branch objects
+                        const processedBranches = {};
+                        Object.keys(allBranchesData).forEach(key => {
+                            processedBranches[key] = { ...allBranchesData[key], id: key };
+                        });
+
+                        setAllBranches(processedBranches); // Save for the watcher!
+
+                        let closestBranch = null;
+                        let minDistance = Infinity;
+
+                        // Iterate through all branches to find the closest one
+                        Object.keys(processedBranches).forEach(bId => {
+                            const bData = processedBranches[bId];
+                            const targetLat = bData.latitude ?? bData.lat;
+                            const targetLng = bData.longitude ?? bData.lng;
+
+                            if (targetLat === undefined || targetLng === undefined) return;
+
+                            const dist = calculateDistance(
+                                location.coords.latitude,
+                                location.coords.longitude,
+                                targetLat,
+                                targetLng
+                            );
+
+                            // Find the absolute closest branch
+                            if (dist < minDistance) {
+                                minDistance = dist;
+                                closestBranch = bData;
+                                finalBranchId = bId;
+                            }
+                        });
+
+                        if (closestBranch) {
+                            finalBranchData = closestBranch;
+                            finalDistance = minDistance;
+                        }
+                    }
+                } catch (err) {
+                    console.warn("[TRAVEL] Failed to fetch all branches (Permission likely):", err.message);
+                    // Continue to fallback below
+                }
+
+                // Fallback to home branch if closest not found or fetch failed
+                if (!finalBranchData && branchSnap.exists()) {
+                    finalBranchData = branchSnap.val();
+                    const hLat = finalBranchData.latitude ?? finalBranchData.lat;
+                    const hLng = finalBranchData.longitude ?? finalBranchData.lng;
+                    finalDistance = calculateDistance(location.coords.latitude, location.coords.longitude, hLat, hLng);
+                }
+            } else {
+                // Normal Employee behavior
+                if (branchSnap.exists()) {
+                    finalBranchData = branchSnap.val();
+                    const hLat = finalBranchData.latitude ?? finalBranchData.lat;
+                    const hLng = finalBranchData.longitude ?? finalBranchData.lng;
+                    finalDistance = calculateDistance(location.coords.latitude, location.coords.longitude, hLat, hLng);
+                }
+            }
+
+            if (!finalBranchData) {
                 setLocationStatus({ verified: false, message: "Branch data invalid." });
                 return;
             }
 
-            const branchData = branchSnap.val();
-            setBranchInfo(branchData); // Save for continuous monitoring
+            setBranchInfo({ ...finalBranchData, id: finalBranchId }); // Save for continuous monitoring and UI
 
-            const dist = calculateDistance(
-                location.coords.latitude,
-                location.coords.longitude,
-                branchData.latitude,
-                branchData.longitude
-            );
+            const radius = Number(finalBranchData.radius) || 100;
 
-            const radius = Number(branchData.radius) || 100;
-
-            if (dist <= radius) {
-                setLocationStatus({ verified: true, message: `Verified (${dist.toFixed(0)}m)` });
+            if (finalDistance <= radius) {
+                let msg = `Verified (${finalDistance.toFixed(0)}m)`;
+                if (profile.isTravelingEmployee && finalBranchId !== profile.branch) {
+                    const branchName = finalBranchData.name || finalBranchId;
+                    msg = `Visiting ${branchName} (${finalDistance.toFixed(0)}m)`;
+                }
+                setLocationStatus({ verified: true, message: msg });
 
                 // Log verified location (IN)
                 logActivityAsync(ActivityType.LOCATION_SUCCESS_IN, {
                     accuracy: location.coords.accuracy,
                     latitude: location.coords.latitude,
                     longitude: location.coords.longitude,
-                    distance: dist,
-                    radius: radius
+                    distance: finalDistance,
+                    radius: radius,
+                    branch: finalBranchId // Track which branch they are at
                 });
             } else {
-                setLocationStatus({ verified: false, message: `Outside Range (${dist.toFixed(0)}m)` });
+                setLocationStatus({ verified: false, message: `Outside Range (${finalDistance.toFixed(0)}m)` });
 
                 // Log unverified location (OUT)
                 logActivityAsync(ActivityType.LOCATION_SUCCESS_OUT, {
                     accuracy: location.coords.accuracy,
                     latitude: location.coords.latitude,
                     longitude: location.coords.longitude,
-                    distance: dist,
-                    radius: radius
+                    distance: finalDistance,
+                    radius: radius,
+                    branch: finalBranchId
                 });
             }
 
             // 4. Update UI State rules
-            updateUiRules(attendanceData || {}, (dist <= radius));
+            updateUiRules(attendanceData || {}, (finalDistance <= radius));
 
         } catch (error) {
             console.error("Error in verification:", error);
@@ -459,17 +678,13 @@ export default function HomeScreen({ navigation }) {
                 return;
             }
 
-            const reportRef = ref(db, `locationReports/${userId}`);
-            const newReportRef = push(reportRef);
-            await set(newReportRef, {
+            await mobile_reportLocation({
                 latitude: location.coords.latitude,
                 longitude: location.coords.longitude,
                 accuracy: location.coords.accuracy,
                 altitude: location.coords.altitude,
-                timestamp: new Date().toISOString(),
-                employeeName: userData?.name || 'Unknown',
-                branch: userData?.branch || 'Unknown',
-                subdivision: userData?.subdivision || 'Unknown',
+                distance: currentLocation?.distance,
+                radius: currentLocation?.radius
             });
 
             Alert.alert('Location Shared ✓', `Your location has been sent to the admin.\n\nLat: ${location.coords.latitude.toFixed(6)}\nLng: ${location.coords.longitude.toFixed(6)}\nAccuracy: ${location.coords.accuracy.toFixed(0)}m`);
@@ -568,7 +783,8 @@ export default function HomeScreen({ navigation }) {
         }
 
         try {
-            await submitAttendance(userData, payload);
+            // Pass the most recent verified GPS location and the CURRENTly detected branch
+            await submitAttendance(userData, payload, currentLocation, branchInfo?.id || userData.branch);
             Alert.alert("Success", "Punched successfully!");
             // No need to fetch manually, listener handles it
         } catch (error) {
@@ -587,7 +803,7 @@ export default function HomeScreen({ navigation }) {
                 text: "Logout",
                 onPress: () => {
                     resetLocationTracking(); // Clear location jump tracking
-                    logoutUser(); // Correctly calls the wrapper with logging
+                    logoutUser(currentLocation); // Pass location for distance logging
                 }
             }
         ]);
@@ -665,12 +881,12 @@ export default function HomeScreen({ navigation }) {
 
                 {/* Status Section */}
                 <View style={styles.statusRow}>
-                    <Card style={[styles.statusCard, { flex: 1, marginRight: 8 }]}>
+                    <Card style={[styles.statusCard, { flex: 1.6, marginRight: 8 }]}>
                         <Text style={styles.statusLabel}>Location</Text>
                         <Text style={[styles.statusValue, locationStatus.verified ? styles.textSuccess : styles.textError]}>
                             {locationStatus.verified ? "Verified" : "Unverified"}
                         </Text>
-                        <Text style={styles.statusSub}>{locationStatus.message}</Text>
+                        <Text style={styles.statusSub} numberOfLines={2}>{locationStatus.message}</Text>
                     </Card>
                     <Card style={[styles.statusCard, { flex: 1, marginLeft: 8 }]}>
                         <Text style={styles.statusLabel}>Time</Text>
@@ -678,6 +894,28 @@ export default function HomeScreen({ navigation }) {
                         <Text style={styles.statusSub}>{currentTime.toFormat('EEE, dd MMM')}</Text>
                     </Card>
                 </View>
+
+                {/* Swipe Refresh Tip - Frequency Limited & Marquee */}
+                {showTip && (
+                    <View
+                        style={styles.marqueeContainer}
+                        onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
+                    >
+                        <Animated.View
+                            style={[
+                                styles.marqueeWrapper,
+                                { transform: [{ translateX: marqueeAnim }] }
+                            ]}
+                        >
+                            <Text
+                                style={styles.marqueeText}
+                                onLayout={(e) => setTextWidth(e.nativeEvent.layout.width)}
+                            >
+                                Tip: Swipe down to manually refresh your location and status.
+                            </Text>
+                        </Animated.View>
+                    </View>
+                )}
 
 
 
@@ -1080,11 +1318,27 @@ const styles = StyleSheet.create({
         letterSpacing: 0.5,
     },
     scrollContent: { padding: 16 },
+    marqueeContainer: {
+        height: 30,
+        overflow: 'hidden',
+        width: '100%',
+        marginBottom: 10,
+        justifyContent: 'center',
+    },
+    marqueeWrapper: {
+        flexDirection: 'row',
+        position: 'absolute',
+    },
+    marqueeText: {
+        fontSize: 12,
+        color: '#64748b',
+        fontWeight: '500',
+    },
     statusRow: { flexDirection: 'row', marginBottom: 10 },
-    statusCard: { padding: 16, alignItems: 'center' },
-    statusLabel: { fontSize: 12, color: '#6b7280', textTransform: 'uppercase', fontWeight: 'bold' },
-    statusValue: { fontSize: 18, fontWeight: 'bold', color: '#1f2937', marginVertical: 4 },
-    statusSub: { fontSize: 12, color: '#9ca3af' },
+    statusCard: { paddingVertical: 16, paddingHorizontal: 10, alignItems: 'center' },
+    statusLabel: { fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 'bold' },
+    statusValue: { fontSize: 17, fontWeight: 'bold', color: '#1f2937', marginVertical: 4 },
+    statusSub: { fontSize: 11, color: '#9ca3af', textAlign: 'center' },
     textSuccess: { color: '#10b981' },
     textError: { color: '#ef4444' },
     controlCard: { padding: 16 },

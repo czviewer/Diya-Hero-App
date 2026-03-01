@@ -28,3 +28,7 @@ export const mobile_bindDevice = (data) => callFunction('mobile_bindDevice', dat
 export const mobile_updateSessionData = (data) => callFunction('mobile_updateSessionData', data);
 export const mobile_submitIssue = (data) => callFunction('mobile_submitIssue', data);
 export const mobile_requestSignup = (data) => callFunction('mobile_requestSignup', data);
+export const mobile_verifyUser = (data) => callFunction('mobile_verifyUser', data);
+export const mobile_reportLocation = (data) => callFunction('mobile_reportLocation', data);
+export const mobile_updatePushToken = (data) => callFunction('mobile_updatePushToken', data);
+export const admin_sendPasswordResetEmail = (data) => callFunction('admin_sendPasswordResetEmail', data);

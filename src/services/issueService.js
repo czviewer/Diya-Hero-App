@@ -15,7 +15,7 @@ import { mobile_submitIssue } from './cloudFunctions';
  * Submit a new issue to Firebase
  * REPLACED: Uses secure Cloud Function 'mobile_submitIssue'
  */
-export const submitIssue = async (userData, issueData) => {
+export const submitIssue = async (userData, issueData, location = null) => {
     try {
         if (!userData || !userData.uid) {
             throw new Error('User data is required to submit an issue');
@@ -34,6 +34,7 @@ export const submitIssue = async (userData, issueData) => {
                 email: userData.email,
                 branch: userData.branch
             },
+            location, // GPS coordinates at time of issue submission
             deviceInfo: {
                 brand: Device.brand,
                 modelName: Device.modelName,

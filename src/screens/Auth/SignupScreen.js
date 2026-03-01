@@ -4,6 +4,7 @@ import { Eye, EyeOff } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Input, Card } from '../../components/ui';
 import { submitSignupRequest } from '../../services/auth';
+import { mapErrorToMessage } from '../../utils/errorMapper';
 import { getPushTokenForSignup } from '../../services/notifications';
 
 export default function SignupScreen({ navigation }) {
@@ -47,7 +48,8 @@ export default function SignupScreen({ navigation }) {
             );
         } catch (error) {
             console.error(error);
-            Alert.alert("Error", "Failed to submit signup request. It might already exist.");
+            const msg = mapErrorToMessage(error);
+            Alert.alert("Request Failed", msg);
         } finally {
             setLoading(false);
         }

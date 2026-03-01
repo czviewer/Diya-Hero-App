@@ -2,8 +2,8 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
-import { ref, update } from 'firebase/database';
-import { db, auth } from './firebaseConfig';
+import { auth } from './firebaseConfig';
+import { mobile_updatePushToken } from './cloudFunctions';
 
 
 
@@ -146,17 +146,15 @@ export async function getPushTokenForSignup() {
  */
 async function storePushTokenInFirebase(userId, pushToken) {
     try {
-        const userRef = ref(db, `users/${userId}`);
-        await update(userRef, {
+        await mobile_updatePushToken({
             pushToken: pushToken,
-            pushTokenUpdatedAt: new Date().toISOString(),
             deviceInfo: {
                 platform: Platform.OS,
                 deviceName: Device.deviceName || 'Unknown',
                 osVersion: Device.osVersion || 'Unknown',
             },
         });
-        console.log('Push token stored in Firebase');
+        console.log('Push token stored in Firebase (via Cloud Function)');
     } catch (error) {
         console.error('Error storing push token in Firebase:', error);
     }
