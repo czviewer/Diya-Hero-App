@@ -1,7 +1,7 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { initializeAuth, getAuth, getReactNativePersistence } from 'firebase/auth';
 import { getDatabase } from 'firebase/database';
-import SecureStorage from '../utils/SecureStorage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { initTimeSyncModular } from './timeManager';
 
 const firebaseConfig = {
@@ -18,12 +18,15 @@ const firebaseConfig = {
 // Initialize Firebase (only if not already initialized)
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 
-// Initialize Auth with SecureStorage persistence
-// Use getAuth if already initialized to avoid error
+// Initialize Auth with AsyncStorage persistence
+// NOTE: We use AsyncStorage here (not SecureStorage) because Firebase internally
+// uses key names with colons and brackets (e.g. 'firebase:authUser:...[DEFAULT]')
+// which are invalid characters for expo-secure-store's key requirements.
+// Firebase Auth tokens are short-lived JWTs verified server-side — this is safe.
 let auth;
 try {
     auth = initializeAuth(app, {
-        persistence: getReactNativePersistence(SecureStorage)
+        persistence: getReactNativePersistence(AsyncStorage)
     });
 } catch (error) {
     if (error.code === 'auth/already-initialized') {
