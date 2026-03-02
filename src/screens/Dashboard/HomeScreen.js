@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl, Alert, Switch, TouchableOpacity, Image, ActivityIndicator, Modal, Linking, Animated } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import SecureStorage from '../../utils/SecureStorage';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Card } from '../../components/ui';
@@ -176,11 +176,11 @@ export default function HomeScreen({ navigation }) {
     useEffect(() => {
         const checkTipFrequency = async () => {
             try {
-                const countStr = await AsyncStorage.getItem('tip_refresh_count');
+                const countStr = await SecureStorage.getItem('tip_refresh_count');
                 const count = countStr ? parseInt(countStr, 10) : 0;
                 if (count < 5) {
                     setShowTip(true);
-                    await AsyncStorage.setItem('tip_refresh_count', (count + 1).toString());
+                    await SecureStorage.setItem('tip_refresh_count', (count + 1).toString());
                 }
             } catch (e) {
                 console.warn('Error checking tip frequency:', e);

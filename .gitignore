@@ -28,7 +28,10 @@ yarn-error.*
 
 # macOS
 .DS_Store
-*.pem
+
+# Code signing - private key must never be committed
+# The public certificate (certificate.pem) IS tracked intentionally
+certs/private-key.pem
 
 # local env files
 .env*.local

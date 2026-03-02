@@ -1,7 +1,7 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { initializeAuth, getAuth, getReactNativePersistence } from 'firebase/auth';
 import { getDatabase } from 'firebase/database';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import SecureStorage from '../utils/SecureStorage';
 import { initTimeSyncModular } from './timeManager';
 
 const firebaseConfig = {
@@ -18,12 +18,12 @@ const firebaseConfig = {
 // Initialize Firebase (only if not already initialized)
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 
-// Initialize Auth with AsyncStorage persistence
+// Initialize Auth with SecureStorage persistence
 // Use getAuth if already initialized to avoid error
 let auth;
 try {
     auth = initializeAuth(app, {
-        persistence: getReactNativePersistence(AsyncStorage)
+        persistence: getReactNativePersistence(SecureStorage)
     });
 } catch (error) {
     if (error.code === 'auth/already-initialized') {

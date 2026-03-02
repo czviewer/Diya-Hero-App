@@ -8,7 +8,7 @@ import * as Application from 'expo-application';
 import * as Notifications from 'expo-notifications';
 import * as Location from 'expo-location';
 import { Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import SecureStorage from '../utils/SecureStorage';
 import * as Device from 'expo-device';
 import { calculateDistance } from './location';
 import { logActivity, ActivityType } from './activityLog';
@@ -191,7 +191,7 @@ export async function loginUser(email, password) {
         await updateUserSessionData(user.uid);
 
         // 7. Store Login Timestamp for Force Logout sync
-        await AsyncStorage.setItem('lastLoginAt', Date.now().toString());
+        await SecureStorage.setItem('lastLoginAt', Date.now().toString());
 
         return userCredential.user;
     } catch (error) {

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { ActivityIndicator, View, Alert, Text, Animated } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import SecureStorage from '../utils/SecureStorage';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../services/firebaseConfig';
 import { checkDeviceBinding, subscribeToUserStatus, logoutUser } from '../services/auth';
@@ -97,7 +97,7 @@ export default function AppNavigator() {
                 const forceLogoutAt = userData.forceLogoutAt || 0;
 
                 // Fetch last known login time from local storage
-                const lastLoginAtStr = await AsyncStorage.getItem('lastLoginAt');
+                const lastLoginAtStr = await SecureStorage.getItem('lastLoginAt');
                 const lastLoginAt = lastLoginAtStr ? parseInt(lastLoginAtStr, 10) : 0;
 
                 // 1. Suspension Check
