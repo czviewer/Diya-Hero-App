@@ -38,9 +38,8 @@ export default function App() {
           );
         }
       } catch (e) {
-        // Handle or log error - standard OTA failure case (e.g. no internet)
+        // Silent - OTA check failures (e.g. signing mismatch, no internet) should not interrupt the user
         console.log("OTA Error:", e);
-        Alert.alert("OTA Error", `Failed to check for updates: ${e.message}`);
       }
     }
 
