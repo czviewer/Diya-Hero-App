@@ -157,6 +157,22 @@ export default function HomeScreen({ navigation }) {
     const [containerWidth, setContainerWidth] = useState(0);
     const [textWidth, setTextWidth] = useState(0);
 
+    // Branding State
+    const [nerodaUrl, setNerodaUrl] = useState(null);
+
+    useEffect(() => {
+        const urlRef = ref(db, 'config/branding/neroda_url');
+        const unsubscribe = onValue(urlRef, (snapshot) => {
+            const val = snapshot.exists() ? snapshot.val() : null;
+            if (val && typeof val === 'string' && val.trim().length > 0) {
+                setNerodaUrl(val.trim());
+            } else {
+                setNerodaUrl(null);
+            }
+        });
+        return () => unsubscribe();
+    }, []);
+
     useEffect(() => {
         const checkTipFrequency = async () => {
             try {
@@ -1139,7 +1155,17 @@ export default function HomeScreen({ navigation }) {
 
             </ScrollView>
 
-
+            {/* ═══════════════ BRANDING FOOTER (FIXED) ═══════════════ */}
+            <View style={styles.brandingFooter}>
+                <Text style={styles.developedBy}>DEVELOPED BY</Text>
+                <TouchableOpacity
+                    onPress={() => nerodaUrl && Linking.openURL(nerodaUrl)}
+                    activeOpacity={nerodaUrl ? 0.7 : 1}
+                    style={styles.brandingTouch}
+                >
+                    <Text style={styles.nerodaName}>Neroda IT Solutions</Text>
+                </TouchableOpacity>
+            </View>
 
             <TouchableOpacity
                 style={styles.fab}
@@ -1149,7 +1175,7 @@ export default function HomeScreen({ navigation }) {
                 <MessageCircle size={28} color="white" />
             </TouchableOpacity>
 
-        </SafeAreaView >
+        </SafeAreaView>
     );
 }
 
@@ -1600,5 +1626,29 @@ const styles = StyleSheet.create({
         color: 'white',
         fontWeight: '600',
         fontSize: 14
+    },
+
+    // ═══════════════ BRANDING FOOTER STYLES ═══════════════
+    brandingFooter: {
+        backgroundColor: 'transparent',
+        paddingVertical: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    developedBy: {
+        fontSize: 8,
+        color: '#94a3b8',
+        fontWeight: '700',
+        letterSpacing: 1.5,
+        marginBottom: 1,
+    },
+    brandingTouch: {
+        paddingVertical: 0,
+    },
+    nerodaName: {
+        fontSize: 11,
+        fontWeight: 'bold',
+        color: '#4f46e5', // indigo-600
+        letterSpacing: 0.5,
     },
 });

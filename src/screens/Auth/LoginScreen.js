@@ -144,7 +144,7 @@ export default function LoginScreen({ navigation }) {
                     </Card>
 
                     <View style={styles.footer}>
-                        <Text style={styles.footerText}>100% Secured and Real-time audited!</Text>
+                        <Text style={styles.footerText}>Secured by NERODA-SECURE™</Text>
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>

@@ -21,22 +21,13 @@ export default function AppNavigator() {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const fadeAnim = React.useRef(new Animated.Value(0)).current;
-    const contentFadeAnim = React.useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
-        if (loading) {
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 800,
-                useNativeDriver: true,
-            }).start();
-        } else {
-            Animated.timing(contentFadeAnim, {
-                toValue: 1,
-                duration: 1000,
-                useNativeDriver: true,
-            }).start();
-        }
+        Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+        }).start();
     }, [loading]);
 
     useEffect(() => {
@@ -66,11 +57,6 @@ export default function AppNavigator() {
                     const binding = await checkDeviceBinding(u.uid, false, bindLocation);
                     if (!binding.allowed) {
                         console.log('[Navigator] Binding check failed, forcing logout.');
-
-                        // Log the unauthorized attempt - ALREADY LOGGED BY mobile_bindDevice
-                        // const { logUnauthorizedAttempt } = require('../services/auth');
-                        // await logUnauthorizedAttempt(u.uid, u.email, binding.allowed ? 'Unknown' : binding.error);
-
                         await logoutUser();
                         setUser(null);
                         setLoading(false);
@@ -78,7 +64,6 @@ export default function AppNavigator() {
                     }
 
                     // 2. Safe to proceed - Update Session Data & Push Reg
-                    // We do this HERE to ensure we never register a device that isn't bound
                     try {
                         const { registerForPushNotifications } = require('../services/notifications');
                         const { updateUserSessionData } = require('../services/auth');
@@ -160,7 +145,7 @@ export default function AppNavigator() {
     }
 
     return (
-        <Animated.View style={{ flex: 1, opacity: contentFadeAnim }}>
+        <View style={{ flex: 1 }}>
             <NavigationContainer>
                 <Stack.Navigator screenOptions={{ headerShown: false }}>
                     {user ? (
@@ -173,13 +158,12 @@ export default function AppNavigator() {
                         <>
                             <Stack.Screen name="Login" component={LoginScreen} />
                             <Stack.Screen name="Signup" component={SignupScreen} />
-                            {/* PhoneVerify is typically part of Login flow or separate, here we keep it flexible */}
                             <Stack.Screen name="PhoneVerify" component={PhoneVerifyScreen} />
                             <Stack.Screen name="IssueReporting" component={IssueReportingScreen} />
                         </>
                     )}
                 </Stack.Navigator>
             </NavigationContainer>
-        </Animated.View>
+        </View>
     );
 }
