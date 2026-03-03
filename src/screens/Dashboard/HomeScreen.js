@@ -17,6 +17,7 @@ import { fetchTodayAttendance, submitAttendance, getAttendanceState, normalizeAf
 import { getServerISOString, getServerTime } from '../../services/timeManager';
 import * as Location from 'expo-location';
 
+import * as Application from 'expo-application';
 import { DateTime } from 'luxon';
 import { User, LogOut, Clock, CheckCircle, AlertTriangle, Coffee, XCircle, MessageCircle, MapPin, Info } from 'lucide-react-native';
 
@@ -860,6 +861,7 @@ export default function HomeScreen({ navigation }) {
                         <View style={styles.companyInfo}>
                             <Text style={styles.companyName}>Diya-Hero App</Text>
                             <Text style={styles.tagline}>Attendance System</Text>
+                            <Text style={styles.versionBadge}>v{Application.nativeApplicationVersion}</Text>
                         </View>
                     </View>
                 </View>
@@ -1650,5 +1652,12 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: '#4f46e5', // indigo-600
         letterSpacing: 0.5,
+    },
+    versionBadge: {
+        fontSize: 9,
+        color: 'rgba(255,255,255,0.55)',
+        textAlign: 'right',
+        marginTop: 1,
+        letterSpacing: 0.3,
     },
 });
