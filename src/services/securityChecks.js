@@ -34,7 +34,7 @@ export async function checkMockLocation(location = null) {
         return { isMocked: false };
     } catch (error) {
         console.warn('Mock location check failed:', error);
-        return { isMocked: false }; // Fail open
+        return { isMocked: true, source: 'CheckFailed' }; // Fail closed — safer to block than allow
     }
 }
 
@@ -53,7 +53,7 @@ export async function checkVPN() {
         return isVpnActive;
     } catch (error) {
         console.warn('VPN check failed:', error);
-        return false; // Fail open - don't block if check fails
+        return false; // VPN fail open is acceptable — VPN check errors are common and low risk
     }
 }
 
@@ -75,7 +75,7 @@ export function checkDeviceIntegrity() {
         return isJailBroken;
     } catch (error) {
         console.warn('Device integrity check failed:', error);
-        return false; // Fail open
+        return true; // Fail closed — if root check errors, treat as compromised
     }
 }
 
@@ -211,9 +211,9 @@ export async function performSecurityChecks(currentLocation = null) {
 
     } catch (error) {
         console.error('Security checks failed:', error);
-        // Fail open - allow operation if checks fail
-        results.isSafe = true;
-        results.threats = [];
+        // Fail closed — if the overall security check crashes, block the action
+        results.isSafe = false;
+        results.threats = [{ type: 'CHECK_ERROR', severity: 'HIGH', message: 'Security check failed. Please restart the app.' }];
         results.error = error.message;
     }
 
