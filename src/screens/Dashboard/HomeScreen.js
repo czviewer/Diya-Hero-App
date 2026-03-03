@@ -1655,7 +1655,7 @@ const styles = StyleSheet.create({
     },
     versionBadge: {
         fontSize: 9,
-        color: 'rgba(255,255,255,0.55)',
+        color: '#9ca3af',
         textAlign: 'right',
         marginTop: 1,
         letterSpacing: 0.3,
