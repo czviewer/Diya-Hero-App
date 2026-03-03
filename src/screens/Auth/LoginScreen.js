@@ -5,6 +5,7 @@ import { Button, Input, Card } from '../../components/ui';
 import { loginUser, sendMobilePasswordReset } from '../../services/auth';
 import { mapErrorToMessage } from '../../utils/errorMapper';
 import { MessageCircle, Eye, EyeOff, KeyRound } from 'lucide-react-native';
+import * as Application from 'expo-application';
 
 
 import ForgotPasswordModal from '../../components/ForgotPasswordModal';
@@ -145,6 +146,7 @@ export default function LoginScreen({ navigation }) {
 
                     <View style={styles.footer}>
                         <Text style={styles.footerText}>Secured by NERODA-SECURE™</Text>
+                        <Text style={styles.versionText}>v{Application.nativeApplicationVersion}</Text>
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>
@@ -255,5 +257,11 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#9ca3af',
         textAlign: 'center',
+    },
+    versionText: {
+        fontSize: 11,
+        color: '#d1d5db',
+        textAlign: 'center',
+        marginTop: 4,
     }
 });
