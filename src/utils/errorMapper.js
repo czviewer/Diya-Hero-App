@@ -36,6 +36,10 @@ export const mapErrorToMessage = (error) => {
         return "Your account has been deactivated. Please contact your administrator.";
     }
 
+    if (message.includes("locked") || message.includes("too many failed")) {
+        return message; // Friendly message from rate limiting Cloud Function
+    }
+
     // Default Fallback
     return "Something went wrong. Please try again or report the issue.";
 };
