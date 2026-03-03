@@ -15,6 +15,7 @@ import { logActivity, ActivityType } from './activityLog';
 import {
     mobile_bindDevice,
     mobile_logSecurityEvent,
+    mobile_trackLoginAttempt,
     mobile_updateSessionData,
     mobile_requestSignup,
     admin_sendPasswordResetEmail
@@ -196,6 +197,18 @@ export async function loginUser(email, password) {
         return userCredential.user;
     } catch (error) {
         console.error('[Auth] loginUser error:', error.message);
+        // Rate limiting: track failed attempts server-side (silent, non-blocking)
+        try {
+            const result = await mobile_trackLoginAttempt({ email });
+            if (result?.locked) {
+                throw new Error(result.message || 'Account locked. Contact administrator.');
+            }
+        } catch (rateLimitError) {
+            // If lock message, rethrow it; otherwise ignore CF errors
+            if (rateLimitError.message?.includes('locked') || rateLimitError.message?.includes('Contact')) {
+                throw rateLimitError;
+            }
+        }
         throw error;
     }
 }

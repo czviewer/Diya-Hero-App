@@ -23,6 +23,7 @@ const callFunction = async (functionName, data = {}) => {
 // Export individual functions for easier usage
 export const mobile_logActivity = (data) => callFunction('mobile_logActivity', data);
 export const mobile_logSecurityEvent = (data) => callFunction('mobile_logSecurityEvent', data);
+export const mobile_trackLoginAttempt = (data) => callFunction('mobile_trackLoginAttempt', data);
 export const mobile_submitAttendance = (data) => callFunction('mobile_submitAttendance', data);
 export const mobile_bindDevice = (data) => callFunction('mobile_bindDevice', data);
 export const mobile_updateSessionData = (data) => callFunction('mobile_updateSessionData', data);
