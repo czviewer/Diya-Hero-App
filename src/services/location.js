@@ -6,6 +6,11 @@ import { logActivityAsync, ActivityType } from './activityLog';
  * @returns {Promise<boolean>} granted
  */
 export async function requestLocationPermissions() {
+    // Check existing permission first — avoids re-triggering the system dialog
+    const { status: existingStatus } = await Location.getForegroundPermissionsAsync();
+    if (existingStatus === 'granted') return true;
+
+    // Only show the system dialog if permission hasn't been granted yet
     const { status } = await Location.requestForegroundPermissionsAsync();
     const granted = status === 'granted';
 
