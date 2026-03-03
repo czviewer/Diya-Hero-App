@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, Alert, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
@@ -20,6 +20,23 @@ export default function PhoneVerifyScreen({ navigation, route }) {
     const [phoneNumberForWeb, setPhoneNumberForWeb] = useState(null);
 
     const user = auth.currentUser;
+
+    // On mount: if user is already verified in DB, skip OTP and go Home immediately
+    useEffect(() => {
+        const checkVerificationStatus = async () => {
+            if (!user) return;
+            try {
+                const snapshot = await get(ref(db, `users/${user.uid}`));
+                if (snapshot.exists() && snapshot.val().isVerified === true) {
+                    navigation.replace('Home');
+                }
+            } catch (e) {
+                // Silent - if check fails, let OTP flow continue normally
+                console.log('[PhoneVerify] Status check failed:', e);
+            }
+        };
+        checkVerificationStatus();
+    }, []);
 
     const handleCheckLast4 = async () => {
         if (!user) {
