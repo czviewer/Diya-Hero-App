@@ -1,0 +1,1 @@
+eas update --channel production --message "your message" --private-key-path ./certs/private-key.pem
