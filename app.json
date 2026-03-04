@@ -2,11 +2,10 @@
   "expo": {
     "name": "Diya-Hero App",
     "slug": "attendance-mobile",
-    "version": "1.0.1",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -29,8 +28,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "versionCode": 2,
-      "edgeToEdgeEnabled": true,
+      "versionCode": 3,
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
@@ -55,13 +53,16 @@
           "color": "#6366f1"
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow Diya-Hero App to use Face ID for secure access."
+        }
+      ],
+      "@react-native-firebase/app",
+      "@react-native-firebase/app-check"
     ],
-    "notification": {
-      "icon": "./assets/notification-icon.png",
-      "color": "#6366f1",
-      "androidMode": "default"
-    },
     "web": {
       "favicon": "./assets/favicon.png"
     },

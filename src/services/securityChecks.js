@@ -1,7 +1,7 @@
-import { isMockingLocation } from 'react-native-turbo-mock-location-detector';
-import { checkVpn } from 'expo-vpn-checker';
+import ExpoVpnChecker from 'expo-vpn-checker';
 import JailMonkey from 'jail-monkey';
 import { calculateDistance } from './location';
+import { logActivityAsync } from './activityLog';
 
 // Store last known location for jump analysis
 let lastKnownLocation = null;
@@ -45,15 +45,25 @@ export async function checkMockLocation(location = null) {
 export async function checkVPN() {
     try {
         // Check if native module is available
-        if (!checkVpn) {
+        if (!ExpoVpnChecker || typeof ExpoVpnChecker.checkVpn !== 'function') {
             console.warn('VPN checker native module not available - requires rebuild');
-            return false;
+            // Strict fail-closed: If the module is missing, block attendance to prevent bypass
+            throw new Error('Security Error: System integrity check missing. Please contact support or update the app.');
         }
-        const isVpnActive = await checkVpn();
+
+        const isVpnActive = await ExpoVpnChecker.checkVpn();
+        console.log('[VPN] Check result:', isVpnActive);
+
+        // Only log if a VPN is actually detected (Security Event)
+        if (isVpnActive) {
+            logActivityAsync('VPN_DETECTED', { value: true });
+        }
+
         return isVpnActive;
     } catch (error) {
         console.warn('VPN check failed:', error);
-        return false; // VPN fail open is acceptable — VPN check errors are common and low risk
+        logActivityAsync('VPN_CHECK_ERROR', { error: error.message });
+        throw new Error('Security Validation Error: Please restart the app or ensure any VPN/Proxy is completely turned off.');
     }
 }
 
@@ -155,10 +165,15 @@ export async function performSecurityChecks(currentLocation = null) {
     const results = {
         isSafe: true,
         threats: [],
-        details: {}
+        details: {},
+        appCheck: global.__APP_CHECK_STATUS__ || { status: 'not_initialized' }
     };
 
     try {
+        // Only log App Check status if it failed (Diagnostics)
+        if (global.__APP_CHECK_STATUS__ && global.__APP_CHECK_STATUS__.success === false) {
+            logActivityAsync('APP_CHECK_FAIL', global.__APP_CHECK_STATUS__);
+        }
         // 1. Check for mock location
         const mockCheck = await checkMockLocation(currentLocation);
         results.details.mockLocation = mockCheck.isMocked;
@@ -211,6 +226,12 @@ export async function performSecurityChecks(currentLocation = null) {
 
     } catch (error) {
         console.error('Security checks failed:', error);
+        // Log the exact error to the server for debugging
+        logActivityAsync('SECURITY_CHECK_CRASH', {
+            error: error.message,
+            stack: error.stack?.substring(0, 500)
+        });
+
         // Fail closed — if the overall security check crashes, block the action
         results.isSafe = false;
         results.threats = [{ type: 'CHECK_ERROR', severity: 'HIGH', message: 'Security check failed. Please restart the app.' }];

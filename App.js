@@ -10,8 +10,13 @@ import LocationEnablerPopup from './src/components/LocationEnablerPopup';
 import { setupNotificationListeners } from './src/services/notifications';
 import { auth } from './src/services/firebaseConfig';
 import { requestLocationPermissions } from './src/services/location';
+import { usePreventScreenCapture } from 'expo-screen-capture';
+import SecurityWrapper from './src/components/SecurityWrapper';
 
 export default function App() {
+  // Prevent screenshots globally across the app
+  usePreventScreenCapture();
+
   // Request location permission on app launch
   useEffect(() => {
     requestLocationPermissions();
@@ -59,7 +64,9 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <LocationEnablerPopup />
-      <AppNavigator />
+      <SecurityWrapper>
+        <AppNavigator />
+      </SecurityWrapper>
       <UpdateModal />
       <MaintenanceModal />
       <StatusBar style="dark" backgroundColor="transparent" translucent={true} />
