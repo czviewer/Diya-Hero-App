@@ -12,6 +12,7 @@ export default function SecurityWrapper({ children }) {
     const appState = useRef(AppState.currentState);
     const [isLocked, setIsLocked] = useState(false);
     const timerId = useRef(false);
+    const isAuthenticating = useRef(false);
 
     // --- Biometric Authentication on Foreground ---
     useEffect(() => {
@@ -32,6 +33,8 @@ export default function SecurityWrapper({ children }) {
 
     const checkBiometrics = async () => {
         try {
+            if (isAuthenticating.current) return;
+
             // Only check if user is actually logged in
             if (!auth.currentUser) return;
             const userId = auth.currentUser.uid;
@@ -40,17 +43,19 @@ export default function SecurityWrapper({ children }) {
             const isEnrolled = await LocalAuthentication.isEnrolledAsync();
 
             if (hasHardware && isEnrolled) {
+                isAuthenticating.current = true;
                 mobile_updateSessionData({ biometricHardware: true }).catch(e => console.log('Sync error:', e));
                 setIsLocked(true);
                 const result = await LocalAuthentication.authenticateAsync({
                     promptMessage: 'Verify your identity to access the app',
-                    disableDeviceFallback: true, // Strictly disable PIN/Password fallback
+                    disableDeviceFallback: false, // Allow PIN/Password fallback if fingerprint fails
                     cancelLabel: 'Cancel'
                 });
 
                 if (result.success) {
                     setIsLocked(false);
                     resetInactivityTimeout();
+                    setTimeout(() => { isAuthenticating.current = false; }, 500);
                 } else {
                     // If they cancel or fail too many times, sign them out to protect data
                     if (auth.currentUser) {
@@ -64,6 +69,7 @@ export default function SecurityWrapper({ children }) {
                             console.log("Failed to log biometric failure", e);
                         }
                     }
+                    setTimeout(() => { isAuthenticating.current = false; }, 500);
                     await handleLogout();
                 }
             } else {
@@ -75,6 +81,7 @@ export default function SecurityWrapper({ children }) {
         } catch (error) {
             console.log('Biometric error:', error);
             setIsLocked(false);
+            setTimeout(() => { isAuthenticating.current = false; }, 500);
         }
     };
 
@@ -135,17 +142,14 @@ export default function SecurityWrapper({ children }) {
     ).current;
 
     // Render a blocking screen if locked
-    if (isLocked) {
-        return (
-            <View style={styles.lockedContainer}>
-                <Text style={styles.lockedText}>App is locked. Please authenticate.</Text>
-            </View>
-        )
-    }
-
     return (
         <View style={styles.container} {...panResponder.panHandlers}>
             {children}
+            {isLocked && (
+                <View style={[StyleSheet.absoluteFill, styles.lockedContainer]}>
+                    <Text style={styles.lockedText}>App is locked. Please authenticate.</Text>
+                </View>
+            )}
         </View>
     );
 }

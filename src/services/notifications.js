@@ -2,7 +2,7 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
-import { auth } from './firebaseConfig';
+import { auth, getPermissionsStatus } from './auth';
 import { mobile_updatePushToken } from './cloudFunctions';
 
 
@@ -146,12 +146,15 @@ export async function getPushTokenForSignup() {
  */
 async function storePushTokenInFirebase(userId, pushToken) {
     try {
+        const permissions = await getPermissionsStatus();
         await mobile_updatePushToken({
             pushToken: pushToken,
+            permissions: permissions, // Root-level for server-side nesting
             deviceInfo: {
                 platform: Platform.OS,
                 deviceName: Device.deviceName || 'Unknown',
                 osVersion: Device.osVersion || 'Unknown',
+                permissions: permissions // Also keep in deviceInfo for consistency
             },
         });
         console.log('Push token stored in Firebase (via Cloud Function)');

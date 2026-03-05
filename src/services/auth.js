@@ -225,6 +225,30 @@ export async function loginUser(email, password) {
 }
 
 /**
+ * Fetches the current status of location and notification permissions.
+ * @returns {Promise<Object>} Status of permissions
+ */
+export async function getPermissionsStatus() {
+    let notifStatus = 'unknown';
+    try {
+        const { status } = await Notifications.getPermissionsAsync();
+        notifStatus = status;
+    } catch (e) { console.log('Error fetching notification status:', e); }
+
+    let locStatus = 'unknown';
+    try {
+        const { status } = await Location.getForegroundPermissionsAsync();
+        locStatus = status;
+    } catch (e) { console.log('Error fetching location status:', e); }
+
+    return {
+        notifications: notifStatus,
+        location: locStatus,
+        lastChecked: new Date().toISOString()
+    };
+}
+
+/**
  * Updates user session data including App Version and Permissions
  * REPLACED: Uses secure Cloud Function 'mobile_updateSessionData'
  */
@@ -232,29 +256,22 @@ export async function updateUserSessionData(userId) {
     try {
         const version = Application.nativeApplicationVersion || '1.0.0';
         const build = Application.nativeBuildVersion || '1';
-
-        // Get Permissions (safely)
-        let notifStatus = 'unknown';
-        try {
-            const { status } = await Notifications.getPermissionsAsync();
-            notifStatus = status;
-        } catch (e) { console.log('Error fetching notification status:', e); }
-
-        let locStatus = 'unknown';
-        try {
-            const { status } = await Location.getForegroundPermissionsAsync();
-            locStatus = status;
-        } catch (e) { console.log('Error fetching location status:', e); }
+        const permissions = await getPermissionsStatus();
 
         // Send to Server - Server handles "only update if changed" logic to save cost/writes
+        // NOTE: Server expects 'permissions' at the root of the payload to handle nesting in DB
         await mobile_updateSessionData({
             appVersion: {
                 versionName: version,
                 versionCode: build
             },
-            permissions: {
-                notifications: notifStatus,
-                location: locStatus
+            permissions: permissions,
+            deviceInfo: {
+                platform: Platform.OS,
+                brand: Device.brand,
+                modelName: Device.modelName,
+                deviceName: Device.deviceName || 'Unknown',
+                osVersion: Device.osVersion
             }
         });
 
