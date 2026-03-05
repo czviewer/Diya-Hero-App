@@ -5,7 +5,7 @@ import { ActivityIndicator, View, Alert, Text, Animated } from 'react-native';
 import SecureStorage from '../utils/SecureStorage';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../services/firebaseConfig';
-import { checkDeviceBinding, subscribeToUserStatus, logoutUser } from '../services/auth';
+import { checkDeviceBinding, subscribeToUserStatus, logoutUser, lastManualLoginTimestamp } from '../services/auth';
 import * as Location from 'expo-location';
 
 // Screens
@@ -40,15 +40,20 @@ export default function AppNavigator() {
                     try {
                         const { status } = await Location.getForegroundPermissionsAsync();
                         if (status === 'granted') {
-                            const loc = await Location.getCurrentPositionAsync({
-                                accuracy: Location.Accuracy.Balanced,
-                                timeout: 5000,
-                            });
-                            bindLocation = {
-                                latitude: loc.coords.latitude,
-                                longitude: loc.coords.longitude,
-                                accuracy: loc.coords.accuracy
-                            };
+                            let loc = await Location.getLastKnownPositionAsync();
+                            if (!loc) {
+                                loc = await Location.getCurrentPositionAsync({
+                                    accuracy: Location.Accuracy.Balanced,
+                                    timeout: 1500,
+                                });
+                            }
+                            if (loc) {
+                                bindLocation = {
+                                    latitude: loc.coords.latitude,
+                                    longitude: loc.coords.longitude,
+                                    accuracy: loc.coords.accuracy
+                                };
+                            }
                         }
                     } catch (locErr) {
                         // Silent - location is optional for bind log
@@ -68,8 +73,8 @@ export default function AppNavigator() {
                         const { registerForPushNotifications } = require('../services/notifications');
                         const { updateUserSessionData } = require('../services/auth');
 
-                        await registerForPushNotifications();
-                        await updateUserSessionData(u.uid);
+                        registerForPushNotifications().catch(err => console.log('Push reg err:', err));
+                        updateUserSessionData(u.uid).catch(err => console.log('Session sync err:', err));
                     } catch (err) {
                         console.log('[Navigator] Non-critical session update failed:', err);
                     }
@@ -96,9 +101,10 @@ export default function AppNavigator() {
                 const isActive = userData.isActive !== false;
                 const forceLogoutAt = userData.forceLogoutAt || 0;
 
-                // Fetch last known login time from local storage
+                // Fetch last known login time from local storage or in-memory cache
                 const lastLoginAtStr = await SecureStorage.getItem('lastLoginAt');
-                const lastLoginAt = lastLoginAtStr ? parseInt(lastLoginAtStr, 10) : 0;
+                const storedLastLogin = lastLoginAtStr ? parseInt(lastLoginAtStr, 10) : 0;
+                const lastLoginAt = Math.max(storedLastLogin, lastManualLoginTimestamp);
 
                 // 1. Suspension Check
                 if (!isActive) {

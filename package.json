@@ -47,6 +47,8 @@
   },
   "private": true,
   "devDependencies": {
-    "babel-preset-expo": "^54.0.10"
+    "babel-preset-expo": "^54.0.10",
+    "javascript-obfuscator": "^5.3.0",
+    "obfuscator-io-metro-plugin": "^2.1.3"
   }
 }

@@ -1,0 +1,48 @@
+# Cybersecurity Analysis Report: `attendance-mobile`
+
+## Executive Summary
+A comprehensive security analysis was conducted on the React Native code for the `attendance-mobile` application. The application has several strong security controls in place (such as mock GPS detection, jailbreak detection, and location jump analysis). However, there are critical and medium-level vulnerabilities related to session management, data storage, and application protection that need to be addressed.
+
+## 1. Critical Vulnerabilities
+
+### 1.1 Insecure Storage of Authentication Tokens
+**Location:** [src/services/firebaseConfig.js](file:///d:/Project/attendance-mobile/src/services/firebaseConfig.js) (Line 21)
+**Description:** The application explicitly uses `@react-native-async-storage/async-storage` for Firebase authentication state persistence instead of `expo-secure-store`. `AsyncStorage` stores data in plain text on the device. If the device is physically compromised or another malicious app gains root access (despite root checks), the session tokens can be extracted.
+**Recommendation:** Migrate to a secure storage solution like `expo-secure-store` or `react-native-keychain`. If Firebase SDK requires specific key formats, use a custom storage adapter that wraps `SecureStore`.
+
+### 1.2 Lack of Session Inactivity Timeouts
+**Location:** General UI Flow (`AppNavigator` / [HomeScreen](file:///d:/Project/attendance-mobile/src/screens/Dashboard/HomeScreen.js#114-1183))
+**Description:** The application relies entirely on Firebase Auth's persistent session without enforcing inactivity timeouts natively. An unlocked, unattended device with the app open could allow unauthorized personnel to mark attendance or view logs.
+**Recommendation:** Implement an auto-logout mechanism using `PanResponder` or `AppState` to detect inactivity and destroy the session after a defined period (e.g., 15 minutes).
+
+### 1.3 Exposed Firebase Credentials
+**Location:** [src/services/firebaseConfig.js](file:///d:/Project/attendance-mobile/src/services/firebaseConfig.js)
+**Description:** Firebase API keys and project IDs are hardcoded in the source code. While this is standard for Firebase client SDKs, it exposes the application to abuse if Firebase Realtime Database Security Rules and App Check are not strictly enforced.
+**Recommendation:** Ensure Firebase App Check (reCAPTCHA Enterprise, DeviceCheck/App Attest) is strictly enforced to block unauthorized programmatic access using these keys. Review Firebase database rules to ensure nodes are not publicly accessible.
+
+## 2. High & Medium Vulnerabilities
+
+### 2.1 Lack of App Screen Protection (Screenshot/Recording Prevention)
+**Location:** [App.js](file:///d:/Project/attendance-mobile/App.js)
+**Description:** The app does not prevent screenshots or screen recordings. Sensitive data (employee IDs, location coordinates, attendance times) could be captured by malicious background apps or accidentally shared.
+**Recommendation:** Use `expo-screen-capture` to disable screenshots and screen recording on sensitive screens. 
+
+### 2.2 Lack of Biometric / Local Authentication
+**Location:** [src/screens/Auth/LoginScreen.js](file:///d:/Project/attendance-mobile/src/screens/Auth/LoginScreen.js)
+**Description:** After the initial login, the app opens directly to the Dashboard if the token is valid. There is no secondary verification (FaceID/TouchID) to confirm the identity of the person holding the device.
+**Recommendation:** Integrate `expo-local-authentication` to prompt for biometric or pin verification upon App foregrounding or before marking sensitive attendance punches.
+
+### 2.3 Bypassable Client-Side Security Checks
+**Location:** [src/services/securityChecks.js](file:///d:/Project/attendance-mobile/src/services/securityChecks.js)
+**Description:** Root detection (`JailMonkey`), Mock Location detection, and VPN detection are performed client-side. Sophisticated attackers using tools like Magisk, Xposed, or Frida can hook these JavaScript/Native functions to force them to return `false`.
+**Recommendation:** While client-side checks are good deterrents, rely on strong server-side controls. Implement Google Play Integrity API (Android) and DeviceCheck (iOS) to attest app integrity on the backend before accepting attendance punches.
+
+### 2.4 Hardcoded Default Values for Security Rules
+**Location:** [src/services/securityChecks.js](file:///d:/Project/attendance-mobile/src/services/securityChecks.js)
+**Description:** The `MAX_REALISTIC_SPEED` is arbitrarily hardcoded to `200 km/h` on the client. An attacker manipulating the client bundle can change this threshold to bypass location jump analysis.
+**Recommendation:** Move speed calculations and validation thresholds to the Cloud Functions backend where they cannot be manipulated.
+
+## 3. Notable Strengths
+- **Location Verification:** Strong continuous foreground monitoring checking proximity to branch radii.
+- **Mock GPS/VPN/Root Detection:** Active implementation of `JailMonkey` and `expo-vpn-checker` to thwart generic device manipulation.
+- **Server-Side Operations:** Sensitive actions like `mobile_bindDevice` and `mobile_logSecurityEvent` correctly delegate logic to Firebase Cloud Functions rather than relying entirely on the client.

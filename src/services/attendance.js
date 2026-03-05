@@ -79,10 +79,10 @@ export function subscribeToTodayAttendance(userData, onData) {
  * Returns current date/time parts based on Server Time.
  */
 export function getCurrentTimeParts() {
-    const now = getServerTime();
-    const dateString = now.toISOString().slice(0, 10);
-    const hour = now.getHours();
-    const minute = now.getMinutes();
+    const now = DateTime.fromJSDate(getServerTime(), { zone: 'Asia/Kolkata' });
+    const dateString = now.toISODate(); // Returns YYYY-MM-DD in the specified zone
+    const hour = now.hour;
+    const minute = now.minute;
     return { dateString, hour, minute };
 }
 

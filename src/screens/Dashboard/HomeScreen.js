@@ -860,8 +860,10 @@ export default function HomeScreen({ navigation }) {
                         />
                         <View style={styles.companyInfo}>
                             <Text style={styles.companyName}>Diya-Hero App</Text>
-                            <Text style={styles.tagline}>Attendance System</Text>
-                            <Text style={styles.versionBadge}>v{Application.nativeApplicationVersion}</Text>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Text style={styles.tagline}>Attendance System</Text>
+                                <Text style={styles.versionBadge}>v{Application.nativeApplicationVersion}</Text>
+                            </View>
                         </View>
                     </View>
                 </View>

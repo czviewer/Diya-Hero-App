@@ -12,6 +12,10 @@ import SecureStorage from '../utils/SecureStorage';
 import * as Device from 'expo-device';
 import { calculateDistance } from './location';
 import { logActivity, ActivityType } from './activityLog';
+
+// In-memory cache for the very last manual login time to prevent race conditions during Navigator boot
+export let lastManualLoginTimestamp = 0;
+
 import {
     mobile_bindDevice,
     mobile_logSecurityEvent,
@@ -117,6 +121,10 @@ export async function loginUser(email, password) {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
+        // Immediately update the manual login timestamp to prevent Navigator race condition
+        lastManualLoginTimestamp = Date.now();
+        await SecureStorage.setItem('lastLoginAt', lastManualLoginTimestamp.toString());
+
         // 1. Check if account is active (Read-only, safe to keep client-side for speed)
         const userRef = ref(db, `users/${user.uid}`);
         const snapshot = await get(userRef);
@@ -134,15 +142,20 @@ export async function loginUser(email, password) {
         try {
             const { status } = await Location.getForegroundPermissionsAsync();
             if (status === 'granted') {
-                const loc = await Location.getCurrentPositionAsync({
-                    accuracy: Location.Accuracy.Balanced,
-                    timeout: 5000,
-                });
-                loginLocation = {
-                    latitude: loc.coords.latitude,
-                    longitude: loc.coords.longitude,
-                    accuracy: loc.coords.accuracy
-                };
+                let loc = await Location.getLastKnownPositionAsync();
+                if (!loc) {
+                    loc = await Location.getCurrentPositionAsync({
+                        accuracy: Location.Accuracy.Balanced,
+                        timeout: 1500,
+                    });
+                }
+                if (loc) {
+                    loginLocation = {
+                        latitude: loc.coords.latitude,
+                        longitude: loc.coords.longitude,
+                        accuracy: loc.coords.accuracy
+                    };
+                }
             }
         } catch (locErr) {
             // Silent - location is optional for bind log
@@ -191,8 +204,6 @@ export async function loginUser(email, password) {
         // 6. Update session data (Server-Side)
         await updateUserSessionData(user.uid);
 
-        // 7. Store Login Timestamp for Force Logout sync
-        await SecureStorage.setItem('lastLoginAt', Date.now().toString());
 
         return userCredential.user;
     } catch (error) {
