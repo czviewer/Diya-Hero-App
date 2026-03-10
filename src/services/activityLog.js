@@ -1,7 +1,6 @@
 import { mobile_logActivity } from './cloudFunctions';
-import { auth } from './firebaseConfig'; // Keep auth to check current user
+import { auth, getDeviceInfo } from './auth'; // Centralized metadata & device info
 import { Platform } from 'react-native';
-import * as Device from 'expo-device';
 import * as Location from 'expo-location';
 
 /**
@@ -22,21 +21,7 @@ export const ActivityType = {
 /**
  * Get device information for logging context
  */
-function getDeviceInfo() {
-    try {
-        return {
-            platform: Platform.OS,
-            osVersion: Device.osVersion || 'unknown',
-            modelName: Device.modelName || 'unknown',
-        };
-    } catch (error) {
-        return {
-            platform: Platform.OS || 'unknown',
-            osVersion: 'unknown',
-            modelName: 'unknown',
-        };
-    }
-}
+// getDeviceInfo() removed - using centralized version from auth.js
 
 /**
  * Silently fetch current GPS coordinates for logging.
@@ -97,7 +82,7 @@ export async function logActivity(type, metadata = {}) {
             metadata: {
                 ...metadata,
                 source: 'MOBILE_APP',
-                userRole: 'Employee'
+                timestamp: new Date().toISOString()
             },
             location: finalLocation,
             deviceInfo

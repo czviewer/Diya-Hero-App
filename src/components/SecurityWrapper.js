@@ -4,7 +4,8 @@ import * as LocalAuthentication from 'expo-local-authentication';
 import { signOut } from 'firebase/auth';
 import { logUnauthorizedAttempt } from '../services/auth';
 import { mobile_updateSessionData } from '../services/cloudFunctions';
-import { auth } from '../services/firebaseConfig';
+import { auth, db } from '../services/firebaseConfig';
+import { ref, get } from 'firebase/database';
 
 const INACTIVITY_TIMEOUT = 15 * 60 * 1000; // 15 minutes
 
@@ -38,6 +39,22 @@ export default function SecurityWrapper({ children }) {
             // Only check if user is actually logged in
             if (!auth.currentUser) return;
             const userId = auth.currentUser.uid;
+
+            // Check if user has bypass enabled (for users with broken sensors etc.)
+            try {
+                const userSnap = await get(ref(db, `users/${userId}`));
+                if (userSnap.exists()) {
+                    const userData = userSnap.val();
+                    if (userData.isBioBypass === true) {
+                        setIsLocked(false);
+                        setTimeout(() => { isAuthenticating.current = false; }, 500);
+                        return; // Completely bypass remainder of biometric logic
+                    }
+                }
+            } catch (dbErr) {
+                console.log("Error checking bypass flag:", dbErr);
+                // On error we log and continue to the normal hardware check just to be safe
+            }
 
             const hasHardware = await LocalAuthentication.hasHardwareAsync();
             const isEnrolled = await LocalAuthentication.isEnrolledAsync();

@@ -68,15 +68,12 @@ export default function AppNavigator() {
                         return; // Stop here
                     }
 
-                    // 2. Safe to proceed - Update Session Data & Push Reg
+                    // 2. Safe to proceed - Sync All Metadata (Push Token, Session Data, Device Info)
                     try {
-                        const { registerForPushNotifications } = require('../services/notifications');
-                        const { updateUserSessionData } = require('../services/auth');
-
-                        registerForPushNotifications().catch(err => console.log('Push reg err:', err));
-                        updateUserSessionData(u.uid).catch(err => console.log('Session sync err:', err));
+                        const { syncAllMetadata } = require('../services/auth');
+                        syncAllMetadata(u.uid).catch(err => console.log('[Navigator] Sync error:', err));
                     } catch (err) {
-                        console.log('[Navigator] Non-critical session update failed:', err);
+                        console.log('[Navigator] Non-critical metadata sync failed:', err);
                     }
 
                     setUser(u);

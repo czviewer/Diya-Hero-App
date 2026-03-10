@@ -39,14 +39,16 @@ export async function getDeviceId() {
 
 export function getDeviceInfo() {
     return {
-        brand: Device.brand,
-        modelName: Device.modelName,
-        osName: Device.osName,
-        osVersion: Device.osVersion,
-        platform: Platform.OS,
-        appVersion: Application.nativeApplicationVersion || '1.0.0'
+        brand: Device.brand || 'Unknown',
+        modelName: Device.modelName || 'Unknown',
+        deviceName: Device.deviceName || 'Unknown',
+        osName: Device.osName || 'Unknown',
+        osVersion: Device.osVersion || 'Unknown',
+        platform: Platform.OS
     };
 }
+
+// getMetadata removed - flattening useful fields to root instead
 
 /**
  * Checks if the current device is bound to the user's account.
@@ -201,8 +203,8 @@ export async function loginUser(email, password) {
             radius: loginRadius
         });
 
-        // 6. Update session data (Server-Side)
-        await updateUserSessionData(user.uid);
+        // 6. Update session data & push token (Full Sync)
+        await syncAllMetadata(user.uid);
 
 
         return userCredential.user;
@@ -243,8 +245,7 @@ export async function getPermissionsStatus() {
 
     return {
         notifications: notifStatus,
-        location: locStatus,
-        lastChecked: new Date().toISOString()
+        location: locStatus
     };
 }
 
@@ -257,26 +258,46 @@ export async function updateUserSessionData(userId) {
         const version = Application.nativeApplicationVersion || '1.0.0';
         const build = Application.nativeBuildVersion || '1';
         const permissions = await getPermissionsStatus();
+        const deviceInfo = getDeviceInfo();
 
-        // Send to Server - Server handles "only update if changed" logic to save cost/writes
-        // NOTE: Server expects 'permissions' at the root of the payload to handle nesting in DB
+        // Send to Server
         await mobile_updateSessionData({
             appVersion: {
                 versionName: version,
                 versionCode: build
             },
             permissions: permissions,
+            source: 'MOBILE_APP',
             deviceInfo: {
-                platform: Platform.OS,
-                brand: Device.brand,
-                modelName: Device.modelName,
-                deviceName: Device.deviceName || 'Unknown',
-                osVersion: Device.osVersion
+                ...deviceInfo,
+                permissions: permissions
             }
         });
 
     } catch (error) {
         console.error('[Auth] Failed to update session data:', error);
+    }
+}
+
+/**
+ * Perform a full synchronization of all device metadata and push tokens.
+ * This is the recommended way to ensure everything is up to date on app start or login.
+ */
+export async function syncAllMetadata(userId) {
+    if (!userId) return;
+
+    console.log('[Auth] Starting full metadata sync for:', userId);
+    try {
+        // 1. Get Push Token (includes internal update if token changed/exists)
+        const { registerForPushNotifications } = require('./notifications');
+        const pushToken = await registerForPushNotifications();
+
+        // 2. Update Session Data (Permissions, App Version, Device Info)
+        await updateUserSessionData(userId);
+
+        console.log('[Auth] Full metadata sync completed successfully.');
+    } catch (error) {
+        console.error('[Auth] Full metadata sync failed:', error);
     }
 }
 
@@ -325,8 +346,7 @@ export async function submitSignupRequest(requestData) {
             ...requestData,
             deviceInfo: getDeviceInfo(),
             location: signupLocation,
-            source: 'MOBILE_APP',
-            userRole: 'Employee'
+            source: 'MOBILE_APP'
         });
         return { success: true };
     } catch (error) {
