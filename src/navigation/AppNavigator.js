@@ -60,12 +60,16 @@ export default function AppNavigator() {
                     }
 
                     const binding = await checkDeviceBinding(u.uid, false, bindLocation);
-                    if (!binding.allowed) {
-                        console.log('[Navigator] Binding check failed, forcing logout.');
+                    if (!binding.allowed && binding.errorCode !== 'technical_error') {
+                        console.log('[Navigator] Security rejection: Device binding failed. Forcing logout.');
                         await logoutUser();
                         setUser(null);
                         setLoading(false);
                         return; // Stop here
+                    }
+                    
+                    if (!binding.allowed && binding.errorCode === 'technical_error') {
+                        console.log('[Navigator] Technical error during binding check. Allowing session to continue offline.');
                     }
 
                     // 2. Safe to proceed - Sync All Metadata (Push Token, Session Data, Device Info)

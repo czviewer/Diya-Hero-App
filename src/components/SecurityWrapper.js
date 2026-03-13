@@ -7,7 +7,7 @@ import { mobile_updateSessionData } from '../services/cloudFunctions';
 import { auth, db } from '../services/firebaseConfig';
 import { ref, get } from 'firebase/database';
 
-const INACTIVITY_TIMEOUT = 15 * 60 * 1000; // 15 minutes
+const INACTIVITY_TIMEOUT = 24 * 60 * 60 * 1000; // 24 hours
 
 export default function SecurityWrapper({ children }) {
     const appState = useRef(AppState.currentState);
@@ -74,20 +74,13 @@ export default function SecurityWrapper({ children }) {
                     resetInactivityTimeout();
                     setTimeout(() => { isAuthenticating.current = false; }, 500);
                 } else {
-                    // If they cancel or fail too many times, sign them out to protect data
-                    if (auth.currentUser) {
-                        try {
-                            await logUnauthorizedAttempt(
-                                auth.currentUser.uid,
-                                auth.currentUser.email,
-                                "Failed Biometric Authentication (Device Lockout)"
-                            );
-                        } catch (e) {
-                            console.log("Failed to log biometric failure", e);
-                        }
-                    }
+                    // FALLBACK: If authentication fails or is cancelled
+                    setIsLocked(true); // Keep the app locked
                     setTimeout(() => { isAuthenticating.current = false; }, 500);
-                    await handleLogout();
+                    
+                    // Note: We NO LONGER log out on cancellation. 
+                    // This allows the user to try again later without needing full login.
+                    console.log('[Security] Biometric authentication failed or cancelled. App remains locked.');
                 }
             } else {
                 // If device has no biometrics set up, admit them directly 

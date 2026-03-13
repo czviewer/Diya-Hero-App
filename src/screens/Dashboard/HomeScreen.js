@@ -362,6 +362,15 @@ export default function HomeScreen({ navigation }) {
                                 distance: Math.round(dist),
                                 radius: radius,
                             });
+                        } else if (prevVerifiedRef.current === true && !isVerified) {
+                            // Fire LOCATION_SUCCESS_OUT when moving outside after being inside
+                            logActivityAsync(ActivityType.LOCATION_SUCCESS_OUT, {
+                                accuracy: newLocation.coords.accuracy,
+                                latitude: newLocation.coords.latitude,
+                                longitude: newLocation.coords.longitude,
+                                distance: Math.round(dist),
+                                radius: radius,
+                            });
                         }
                         prevVerifiedRef.current = isVerified;
                         // ─────────────────────────────────────────────────────

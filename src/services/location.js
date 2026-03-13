@@ -67,8 +67,6 @@ export async function getCurrentLocation() {
             maximumAge: 5000 // Reduced cache time (5s) for fresher data
         });
 
-
-
         return location;
     } catch (error) {
         // Log location retrieval failure (crash-proof)

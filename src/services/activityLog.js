@@ -1,5 +1,6 @@
+import { auth } from './firebaseConfig';
+import { getDeviceInfo } from '../utils/deviceInfo';
 import { mobile_logActivity } from './cloudFunctions';
-import { auth, getDeviceInfo } from './auth'; // Centralized metadata & device info
 import { Platform } from 'react-native';
 import * as Location from 'expo-location';
 

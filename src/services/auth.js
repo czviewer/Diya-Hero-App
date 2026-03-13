@@ -9,9 +9,8 @@ import * as Notifications from 'expo-notifications';
 import * as Location from 'expo-location';
 import { Platform } from 'react-native';
 import SecureStorage from '../utils/SecureStorage';
-import * as Device from 'expo-device';
-import { calculateDistance } from './location';
 import { logActivity, ActivityType } from './activityLog';
+import { getDeviceInfo } from '../utils/deviceInfo';
 
 // In-memory cache for the very last manual login time to prevent race conditions during Navigator boot
 export let lastManualLoginTimestamp = 0;
@@ -37,16 +36,7 @@ export async function getDeviceId() {
     return 'unknown-device';
 }
 
-export function getDeviceInfo() {
-    return {
-        brand: Device.brand || 'Unknown',
-        modelName: Device.modelName || 'Unknown',
-        deviceName: Device.deviceName || 'Unknown',
-        osName: Device.osName || 'Unknown',
-        osVersion: Device.osVersion || 'Unknown',
-        platform: Platform.OS
-    };
-}
+
 
 // getMetadata removed - flattening useful fields to root instead
 
@@ -69,7 +59,11 @@ export async function checkDeviceBinding(userUid, silent = false, location = nul
         return result; // { allowed: boolean, error?: string }
     } catch (error) {
         // console.error('[Auth] Device binding check failed:', error); // Prevent double logging
-        return { allowed: false, error: "Unable to verify device binding. Please try again." };
+        return { 
+            allowed: false, 
+            error: "Unable to verify device binding. Please check your internet connection.",
+            errorCode: 'technical_error' 
+        };
     }
 }
 
