@@ -6,12 +6,14 @@ import { StatusBar } from 'expo-status-bar';
 import * as Updates from 'expo-updates';
 import UpdateModal from './src/components/UpdateModal';
 import MaintenanceModal from './src/components/MaintenanceModal';
+import NoInternetModal from './src/components/NoInternetModal';
 import LocationEnablerPopup from './src/components/LocationEnablerPopup';
 import { setupNotificationListeners } from './src/services/notifications';
 import { auth } from './src/services/firebaseConfig';
 import { requestLocationPermissions } from './src/services/location';
 import { usePreventScreenCapture } from 'expo-screen-capture';
 import SecurityWrapper from './src/components/SecurityWrapper';
+
 
 export default function App() {
   // Prevent screenshots globally across the app
@@ -69,6 +71,7 @@ export default function App() {
       </SecurityWrapper>
       <UpdateModal />
       <MaintenanceModal />
+      <NoInternetModal />
       <StatusBar style="dark" backgroundColor="transparent" translucent={true} />
     </SafeAreaProvider>
   );

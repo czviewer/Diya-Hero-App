@@ -92,7 +92,7 @@ export async function registerForPushNotifications(userId = null) {
         });
 
         const pushToken = pushTokenData.data;
-        console.log('🔔 [PUSH] Token generated:', pushToken);
+        if (__DEV__) console.log('🔔 [PUSH] Token generated:', pushToken.substring(0, 20) + '...');
 
         // Store token in Firebase user node
         const currentUserId = userId || auth.currentUser?.uid;
@@ -166,7 +166,7 @@ async function storePushTokenInFirebase(userId, pushToken) {
                 permissions: permissions
             },
         });
-        console.log('🔔 [PUSH] ✅ Push token stored successfully via Cloud Function');
+        if (__DEV__) console.log('🔔 [PUSH] ✅ Push token stored successfully via Cloud Function');
     } catch (error) {
         console.error('🔔 [PUSH] ❌ Error storing push token in Firebase:', error);
     }

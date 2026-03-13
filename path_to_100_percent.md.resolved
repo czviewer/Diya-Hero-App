@@ -1,0 +1,42 @@
+# 🏔️ Roadmap to 100% CIA Compliance
+
+To move from **87.4** to **100**, the remaining "theoretical" gaps must be closed. For a real-time SaaS, this requires shifting from "Basic Defense" to "Enterprise Resilience."
+
+---
+
+## 1. 🔐 Confidentiality (94 ➔ 100)
+
+| Gap | Enterprise Fix |
+|---|---|
+| **Role Exposure** | **Firebase Custom Claims**: Move user roles from the RTDB `users/` node into the Firebase Auth ID Token itself. This makes the role immutable and cryptographically signed in the JWT, preventing any "Stale Profile" bypass. |
+| **Session Control** | **Force Revocation**: Implement a "Global Sign Out" by tracking a `validFrom` timestamp in Custom Claims. If a device is stolen, the admin can revoke the session server-side, forcing every device to re-authenticate regardless of local SecureStore state. |
+
+---
+
+## 2. 🔒 Integrity (95 ➔ 100)
+
+| Gap | Enterprise Fix |
+|---|---|
+| **Double Punch Risk** | **Server-side State Guard**: Update [mobile_submitAttendance](file:///d:/Project/attendance-mobile/src/services/cloudFunctions.js#27-28) to perform a "Check-Before-Write." If a record already exists with `morningLocked: true` or `anLocked: true`, the server must reject the update. This prevents duplicate data in race conditions. |
+| **Atomic Validations** | **Multi-path RTDB Rules**: Tighten rules further so the `attendance/` node can *only* be written by a specific Service Account (Cloud Functions), with zero permissive paths for any authenticated user. |
+
+---
+
+## 3. 🟢 Availability (66 ➔ 100)
+
+*Since this is a real-time SaaS, "Availability" means the system is "Always Up," even if localized internet drops.*
+
+| Gap | Enterprise Fix |
+|---|---|
+| **Deployment Risk** | **Automated Canary Rollouts**: Configure EAS Update to push to 5% of selected active users first. Monitor logs for crashes. If stable for 1 hour, auto-promote to 100%. This eliminates the "Global Instant Crash" risk. |
+| **Infrastructure SPoF** | **Multi-Regional Fallback**: Currently, you are on `asia-southeast1`. For 100%, you need an automated fallback to a second Firebase project or custom API in a different region (e.g., `us-central1`) if GCP Southeast experiences an outage. |
+| **App Resilience** | **Graceful "Read-Only" State**: While you reject "Cached Data" for attendance marking, showing the **last known schedule** or **branch info** in a read-only state during outages provides better "Service Availability" than a total lockout modal. |
+
+---
+
+## 🏆 Summary Checklist for 100%
+
+- [ ] Implement Firebase Custom Claims for Role-Based Access Control.
+- [ ] Add "Existing Record" check in [mobile_submitAttendance](file:///d:/Project/attendance-mobile/src/services/cloudFunctions.js#27-28) function.
+- [ ] Set up automated Canary rollout pipeline in EAS.
+- [ ] Implement Regional Fallback (Advanced Infrastructure).

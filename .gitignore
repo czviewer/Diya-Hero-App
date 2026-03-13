@@ -34,7 +34,13 @@ yarn-error.*
 certs/private-key.pem
 
 # local env files
+.env
 .env*.local
+
+# Firebase secrets — must NOT be committed to git
+# Provide these to each developer/CI out-of-band (e.g. password manager, CI secrets)
+google-services.json
+GoogleService-Info.plist
 
 # typescript
 *.tsbuildinfo

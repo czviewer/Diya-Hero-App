@@ -5,16 +5,27 @@ import { getDatabase } from 'firebase/database';
 import * as SecureStore from 'expo-secure-store';
 import { initTimeSyncModular } from './timeManager';
 
+// --- FIREBASE CONFIG (from EXPO_PUBLIC_* environment variables) ---
+// EXPO_PUBLIC_* vars are inlined by Metro at JS bundle time — they work correctly
+// with EAS Update (OTA) unlike Constants.expoConfig which reflects the native binary's config.
+// Values come from .env (local dev) or EAS Secrets (CI/production builds).
 const firebaseConfig = {
-    apiKey: "AIzaSyBU3K7gRzqiqQt3o9thoEpd06ReLGVmm_w",
-    authDomain: "diya-hero.firebaseapp.com",
-    databaseURL: "https://diya-hero-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "diya-hero",
-    storageBucket: "diya-hero.firebasestorage.app",
-    messagingSenderId: "455829653263",
-    appId: "1:455829653263:web:5a31c65bdab2b9cee0607a",
-    measurementId: "G-DZYHPLQD3F"
+    apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+    authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    databaseURL: process.env.EXPO_PUBLIC_FIREBASE_DATABASE_URL,
+    projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+    measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
+
+if (__DEV__ && !firebaseConfig.apiKey) {
+    throw new Error(
+        '[Firebase] Missing config. Ensure .env is present with EXPO_PUBLIC_FIREBASE_* variables.'
+    );
+}
+
 
 // Initialize Firebase (only if not already initialized)
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
@@ -48,11 +59,11 @@ const appCheck = initializeAppCheck(app, {
                                 provider,
                                 isTokenAutoRefreshEnabled: true,
                             });
-                            console.log('[AppCheck] v21.x Native provider successfully initialized');
+                            if (__DEV__) console.log('[AppCheck] v21.x Native provider successfully initialized');
                         } else if (typeof nativeModule.activate === 'function') {
                             // Fallback for older versions if initializeAppCheck is missing
                             await nativeModule.activate('playIntegrity', true);
-                            console.log('[AppCheck] Legacy Native provider activated');
+                            if (__DEV__) console.log('[AppCheck] Legacy Native provider activated');
                         }
 
                         global.__NATIVE_APP_CHECK_INITIALIZED__ = true;
@@ -67,7 +78,8 @@ const appCheck = initializeAppCheck(app, {
                 global.__APP_CHECK_STATUS__ = {
                     success: true,
                     timestamp: new Date().toISOString(),
-                    tokenPrefix: token ? token.substring(0, 5) + '...' : 'none'
+                    // Only log token prefix in dev; never in production
+                    tokenPrefix: __DEV__ && token ? token.substring(0, 5) + '...' : '[redacted]'
                 };
 
                 return {
@@ -90,6 +102,7 @@ const appCheck = initializeAppCheck(app, {
     }),
     isTokenAutoRefreshEnabled: true,
 });
+
 
 // Secure Storage Adapter for Firebase Auth
 const SecureStorageAdapter = {
