@@ -5,7 +5,6 @@ import {
 import { ref, get, onValue } from 'firebase/database';
 import { auth, db } from './firebaseConfig';
 import * as Application from 'expo-application';
-import * as Notifications from 'expo-notifications';
 import * as Location from 'expo-location';
 import { Platform } from 'react-native';
 import SecureStorage from '../utils/SecureStorage';
@@ -14,6 +13,8 @@ import { getDeviceInfo } from '../utils/deviceInfo';
 
 // In-memory cache for the very last manual login time to prevent race conditions during Navigator boot
 export let lastManualLoginTimestamp = 0;
+
+import { getPermissionsStatus } from './permissions';
 
 import {
     mobile_bindDevice,
@@ -220,28 +221,6 @@ export async function loginUser(email, password) {
     }
 }
 
-/**
- * Fetches the current status of location and notification permissions.
- * @returns {Promise<Object>} Status of permissions
- */
-export async function getPermissionsStatus() {
-    let notifStatus = 'unknown';
-    try {
-        const { status } = await Notifications.getPermissionsAsync();
-        notifStatus = status;
-    } catch (e) { console.log('Error fetching notification status:', e); }
-
-    let locStatus = 'unknown';
-    try {
-        const { status } = await Location.getForegroundPermissionsAsync();
-        locStatus = status;
-    } catch (e) { console.log('Error fetching location status:', e); }
-
-    return {
-        notifications: notifStatus,
-        location: locStatus
-    };
-}
 
 /**
  * Updates user session data including App Version and Permissions
@@ -284,7 +263,7 @@ export async function syncAllMetadata(userId) {
     try {
         // 1. Get Push Token (includes internal update if token changed/exists)
         const { registerForPushNotifications } = require('./notifications');
-        const pushToken = await registerForPushNotifications();
+        const pushToken = await registerForPushNotifications(userId);
 
         // 2. Update Session Data (Permissions, App Version, Device Info)
         await updateUserSessionData(userId);

@@ -101,7 +101,7 @@ function getDeviceInfo() {
     };
 }
 
-export async function submitAttendance(userData, payload, location = null, currentBranch = null) {
+export async function submitAttendance(userData, payload, location = null, currentBranch = null, securityStatus = null) {
     if (!userData || !userData.branch) throw new Error("User profile incomplete (missing branch).");
 
     const branchToSubmit = currentBranch || userData.branch;
@@ -116,7 +116,8 @@ export async function submitAttendance(userData, payload, location = null, curre
                 source: 'MOBILE_APP',
                 userRole: 'Employee'
             },
-            location // GPS coordinates at time of punch (from verified location check)
+            location, // GPS coordinates at time of punch (from verified location check)
+            securityStatus // Results of Root/VPN/Mock checks
         });
 
         // NOTE: We don't need to manually log activity anymore.

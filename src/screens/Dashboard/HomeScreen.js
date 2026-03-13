@@ -343,6 +343,8 @@ export default function HomeScreen({ navigation }) {
                             latitude: newLocation.coords.latitude,
                             longitude: newLocation.coords.longitude,
                             accuracy: newLocation.coords.accuracy,
+                            mocked: newLocation.mocked || newLocation.coords.mocked || false, // Native mock flag
+                            timestamp: newLocation.timestamp, // Native timestamp for freshness check
                             distance: Math.round(dist),
                             radius: radius
                         });
@@ -491,6 +493,8 @@ export default function HomeScreen({ navigation }) {
                 latitude: location.coords.latitude,
                 longitude: location.coords.longitude,
                 accuracy: location.coords.accuracy,
+                mocked: location.mocked || location.coords.mocked || false,
+                timestamp: location.timestamp,
                 distance: initialDistance !== undefined ? Math.round(initialDistance) : undefined,
                 radius: initialRadius
             });
@@ -809,8 +813,14 @@ export default function HomeScreen({ navigation }) {
         }
 
         try {
-            // Pass the most recent verified GPS location and the CURRENTly detected branch
-            await submitAttendance(userData, payload, currentLocation, branchInfo?.id || userData.branch);
+            // Pass location, security status and branch for backend verification
+            await submitAttendance(
+                userData,
+                payload,
+                currentLocation,
+                branchInfo?.id || userData.branch,
+                securityStatus
+            );
             Alert.alert("Success", "Punched successfully!");
             // No need to fetch manually, listener handles it
         } catch (error) {

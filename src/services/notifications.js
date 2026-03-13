@@ -2,7 +2,9 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
-import { auth, getPermissionsStatus, getDeviceInfo } from './auth';
+import { auth } from './auth';
+import { getPermissionsStatus } from './permissions';
+import { getDeviceInfo } from '../utils/deviceInfo';
 import { mobile_updatePushToken } from './cloudFunctions';
 
 
@@ -44,19 +46,21 @@ export async function requestNotificationPermissions() {
 
 /**
  * Register for push notifications and store token in Firebase
+ * @param {string} userId - Optional User ID to ensure token is stored for the right account
  * @returns {Promise<string|null>} Expo push token or null if failed
  */
-export async function registerForPushNotifications() {
+export async function registerForPushNotifications(userId = null) {
     try {
         // Check if running on physical device
         if (!Device.isDevice) {
-            console.log('Push notifications only work on physical devices');
+            console.log('🔔 [PUSH] Push notifications only work on physical devices (Simulator/Emulator detected)');
             return null;
         }
 
         // Request permissions
         const hasPermission = await requestNotificationPermissions();
         if (!hasPermission) {
+            console.log('🔔 [PUSH] No permission for notifications');
             return null;
         }
 
@@ -79,7 +83,7 @@ export async function registerForPushNotifications() {
         // Get Expo push token
         const projectId = Constants.expoConfig?.extra?.eas?.projectId;
         if (!projectId) {
-            console.error('Project ID not found in app.json');
+            console.error('🔔 [PUSH] Project ID not found in app.json');
             return null;
         }
 
@@ -88,11 +92,14 @@ export async function registerForPushNotifications() {
         });
 
         const pushToken = pushTokenData.data;
+        console.log('🔔 [PUSH] Token generated:', pushToken);
 
         // Store token in Firebase user node
-        const user = auth.currentUser;
-        if (user) {
-            await storePushTokenInFirebase(user.uid, pushToken);
+        const currentUserId = userId || auth.currentUser?.uid;
+        if (currentUserId) {
+            await storePushTokenInFirebase(currentUserId, pushToken);
+        } else {
+            console.log('🔔 [PUSH] No user logged in, cannot store token yet.');
         }
 
         return pushToken;
@@ -146,6 +153,7 @@ export async function getPushTokenForSignup() {
  */
 async function storePushTokenInFirebase(userId, pushToken) {
     try {
+        console.log(`🔔 [PUSH] Storing token for user: ${userId}`);
         const permissions = await getPermissionsStatus();
         const deviceInfo = getDeviceInfo();
 
@@ -158,9 +166,9 @@ async function storePushTokenInFirebase(userId, pushToken) {
                 permissions: permissions
             },
         });
-        console.log('Push token stored in Firebase (via Cloud Function)');
+        console.log('🔔 [PUSH] ✅ Push token stored successfully via Cloud Function');
     } catch (error) {
-        console.error('Error storing push token in Firebase:', error);
+        console.error('🔔 [PUSH] ❌ Error storing push token in Firebase:', error);
     }
 }
 

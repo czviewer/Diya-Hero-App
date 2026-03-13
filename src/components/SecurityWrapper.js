@@ -7,12 +7,11 @@ import { mobile_updateSessionData } from '../services/cloudFunctions';
 import { auth, db } from '../services/firebaseConfig';
 import { ref, get } from 'firebase/database';
 
-const INACTIVITY_TIMEOUT = 24 * 60 * 60 * 1000; // 24 hours
+
 
 export default function SecurityWrapper({ children }) {
     const appState = useRef(AppState.currentState);
     const [isLocked, setIsLocked] = useState(false);
-    const timerId = useRef(false);
     const isAuthenticating = useRef(false);
 
     // --- Biometric Authentication on Foreground ---
@@ -71,7 +70,6 @@ export default function SecurityWrapper({ children }) {
 
                 if (result.success) {
                     setIsLocked(false);
-                    resetInactivityTimeout();
                     setTimeout(() => { isAuthenticating.current = false; }, 500);
                 } else {
                     // FALLBACK: If authentication fails or is cancelled
@@ -95,7 +93,6 @@ export default function SecurityWrapper({ children }) {
         }
     };
 
-    // --- Inactivity Timeout ---
     const handleLogout = async () => {
         try {
             await signOut(auth);
@@ -105,20 +102,10 @@ export default function SecurityWrapper({ children }) {
         }
     };
 
-    const resetInactivityTimeout = () => {
-        if (timerId.current) {
-            clearTimeout(timerId.current);
-        }
-        if (auth.currentUser) {
-            timerId.current = setTimeout(handleLogout, INACTIVITY_TIMEOUT);
-        }
-    };
-
     useEffect(() => {
         // Initial setup on mount
         const unsubscribe = auth.onAuthStateChanged((user) => {
             if (user) {
-                resetInactivityTimeout();
                 // Optional: You could call checkBiometrics() here for initial app load,
                 // but usually the login screen handles initial authentication natively.
                 // When already logged in and app starts cold, we can trigger it:
@@ -126,25 +113,21 @@ export default function SecurityWrapper({ children }) {
                     checkBiometrics();
                 }
             } else {
-                if (timerId.current) clearTimeout(timerId.current);
                 setIsLocked(false);
             }
         });
 
         return () => {
             unsubscribe();
-            if (timerId.current) clearTimeout(timerId.current);
         }
     }, []);
 
     const panResponder = useRef(
         PanResponder.create({
             onStartShouldSetPanResponderCapture: () => {
-                resetInactivityTimeout();
                 return false;
             },
             onMoveShouldSetPanResponderCapture: () => {
-                resetInactivityTimeout();
                 return false;
             },
             onPanResponderTerminationRequest: () => true,
