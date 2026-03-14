@@ -47,7 +47,7 @@ export default function LoginScreen({ navigation }) {
 
         setLoading(true);
         try {
-            await loginUser(email, password);
+            await loginUser(email.trim(), password.trim());
             // Navigation is handled by AppNavigator automatically on auth state change
         } catch (error) {
             console.error('[LoginScreen] Login error:', error);

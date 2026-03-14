@@ -29,16 +29,18 @@ export default function SignupScreen({ navigation }) {
 
         setLoading(true);
         try {
-            const formattedPhone = `+91${phone}`;
+            const trimmedEmail = email.trim();
+            const trimmedPassword = password.trim();
+            const formattedPhone = `+91${phone.trim()}`;
             // 1. Get Push Token for notifications (even without login)
             const pushToken = await getPushTokenForSignup();
 
             await submitSignupRequest({
-                name,
-                email,
-                password,
+                name: name.trim(),
+                email: trimmedEmail,
+                password: trimmedPassword,
                 phone: formattedPhone,
-                employeeId,
+                employeeId: employeeId.trim(),
                 pushToken
             });
             Alert.alert(
